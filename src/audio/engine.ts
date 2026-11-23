@@ -48,6 +48,13 @@ class ToneEngine {
       this.set("unavailable");
       return null;
     }
+    const ctx = this.ctx;
+    ctx.onstatechange = () => {
+      if (ctx.state !== "running" && this.state === "playing") {
+        this.stopNodes();
+        this.set("blocked");
+      }
+    };
     return this.ctx;
   }
 

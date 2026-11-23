@@ -9,8 +9,10 @@ import type { ActiveSession, SessionRecord } from "@/domain/types";
 import { toneEngine, type AudioState } from "@/audio/engine";
 import { getSettings } from "@/storage/kv";
 import {
+  NoteConflict,
   StaleAction,
   dismissPendingNote,
+  rebaseRunning,
   finishEarly,
   getActive,
   getImageBlob,
@@ -37,7 +39,8 @@ export function SesionView() {
   const pending = useLive(["history", "active"], getPendingNote);
   const [ended, setEnded] = useState<SessionRecord | null>(null);
   const [failure, setFailure] = useState<null | { message: string; retry?: () => void; action?: { label: string; fn: () => Promise<TransitionResult> } }>(null);
-  const [confirm, setConfirm] = useState(false);
+  // La confirmación queda atada a la sesión y revisión con las que se abrió.
+  const [confirmFor, setConfirmFor] = useState<{ id: string; rev: number } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const s = active.data ?? null;
@@ -46,6 +49,26 @@ export function SesionView() {
   const rest = s ? remainingMs(s, now) : 0;
   const visible = useDocumentVisible();
   const reduced = useReducedMotion();
+  const confirmOpen = !!confirmFor && !!s && confirmFor.id === s.id && confirmFor.rev === s.rev;
+
+  // Si el reloj del sistema retrocede con la sesión abierta, se ancla el restante al reloj monotónico.
+  const clockRef = useRef<{ wall: number; perf: number; rest: number } | null>(null);
+  useEffect(() => {
+    if (!s || s.status !== "running") {
+      clockRef.current = null;
+      return;
+    }
+    const wall = Date.now();
+    const perf = performance.now();
+    const prev = clockRef.current;
+    if (prev && wall - prev.wall < perf - prev.perf - 2000) {
+      const rest = Math.max(0, prev.rest - (perf - prev.perf));
+      clockRef.current = { wall, perf, rest };
+      void rebaseRunning({ id: s.id, rev: s.rev }, rest, wall).catch(() => undefined);
+      return;
+    }
+    clockRef.current = { wall, perf, rest: remainingMs(s, wall) };
+  }, [now, s]);
   const motionOff = reduced || settings.data?.animations === false;
   const audio = useSyncExternalStore(
     (cb) => toneEngine.subscribe(cb),
@@ -248,7 +271,7 @@ export function SesionView() {
 
           <div className="order-1 flex items-center justify-center gap-6 lg:order-none lg:justify-start">
             <div className="flex flex-col items-center gap-2">
-              <button type="button" className="round !h-16 !w-16" onClick={() => setConfirm(true)} disabled={busy} aria-label="Finalizar">
+              <button type="button" className="round !h-16 !w-16" onClick={() => setConfirmFor({ id: s.id, rev: s.rev })} disabled={busy} aria-label="Finalizar">
                 <IconStop />
               </button>
               <span aria-hidden="true" className="text-[13px] text-ink-3">Finalizar</span>
@@ -291,21 +314,22 @@ export function SesionView() {
       </div>
 
       <Modal
-        open={confirm}
-        onClose={() => setConfirm(false)}
+        open={confirmOpen}
+        onClose={() => setConfirmFor(null)}
         title="¿Finalizar la sesión ahora?"
         role="alertdialog"
         description={`Quedan ${formatClock(rest)}. Se guardará en el historial como finalización anticipada y podrás añadir una nota.`}
       >
         <div className="flex gap-3">
-          <button type="button" className="btn-glass flex-1" onClick={() => setConfirm(false)}>Seguir con la sesión</button>
+          <button type="button" className="btn-glass flex-1" onClick={() => setConfirmFor(null)}>Seguir con la sesión</button>
           <button
             type="button"
             className="btn-go flex-1"
             onClick={() => {
-              setConfirm(false);
-              toneEngine.stop();
-              void run("finalizar la sesión", () => finishEarly(expect));
+              const target = confirmFor;
+              setConfirmFor(null);
+              // El tono se detiene cuando el cierre se confirma (handle), no antes: si falla, sigue sonando.
+              if (target) void run("finalizar la sesión", () => finishEarly(target));
             }}
           >
             Finalizar ahora
@@ -360,6 +384,7 @@ function WitnessSummary({ session }: { session: ActiveSession | SessionRecord })
 function Closing({ record, onPin }: { record: SessionRecord; onPin: (r: SessionRecord) => void }) {
   const id = useId();
   const [note, setNote] = useState(record.note);
+  const [base, setBase] = useState(record.note);
   const [state, setState] = useState<"editing" | "saving" | "saved" | "skipped">(record.note ? "saved" : "editing");
   const [error, setError] = useState<string | null>(null);
   const done = record.status === "completed";
@@ -374,10 +399,15 @@ function Closing({ record, onPin }: { record: SessionRecord; onPin: (r: SessionR
     setState("saving");
     setError(null);
     try {
-      await saveNote(record.id, note);
+      await saveNote(record.id, note, { expected: base });
       setState("saved");
-    } catch {
-      setError("No se pudo guardar la nota. Tu texto sigue aquí; inténtalo de nuevo.");
+    } catch (e) {
+      if (e instanceof NoteConflict) {
+        setBase(e.current);
+        setError("La nota cambió en otra pestaña. Tu texto sigue aquí; si lo guardas, la reemplaza.");
+      } else {
+        setError("No se pudo guardar la nota. Tu texto sigue aquí; inténtalo de nuevo.");
+      }
       setState("editing");
     }
   }
@@ -401,7 +431,10 @@ function Closing({ record, onPin }: { record: SessionRecord; onPin: (r: SessionR
             <label htmlFor={id} className="text-sm font-medium">
               Nota <span className="font-normal text-ink-3">· opcional</span>
             </label>
-            <textarea id={id} className="field resize-y" rows={4} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="¿Cómo fue la sesión?" />
+            <textarea id={id} className="field resize-y" rows={4} maxLength={2000} value={note} onChange={(e) => {
+              onPin(record); // escribir fija el cierre: otra sesión no lo reemplaza
+              setNote(e.target.value);
+            }} placeholder="¿Cómo fue la sesión?" />
             {error ? <p role="alert" className="m-0 text-sm text-danger">{error}</p> : null}
             <div className="flex gap-3">
               <button

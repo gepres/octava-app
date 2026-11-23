@@ -107,6 +107,8 @@ export interface Draft {
   key: "draft";
   config: SessionConfig;
   image: (ImageData & { name: string }) | null;
+  /** El sonido aún sigue «Sonido al iniciar» de Ajustes (nadie lo eligió en el Tablero). */
+  toneFromSettings: boolean;
   updatedAt: number;
 }
 
@@ -135,7 +137,7 @@ export function emptyConfig(): SessionConfig {
 }
 
 export function emptyDraft(now = Date.now()): Draft {
-  return { key: "draft", config: emptyConfig(), image: null, updatedAt: now };
+  return { key: "draft", config: emptyConfig(), image: null, toneFromSettings: true, updatedAt: now };
 }
 
 export function clampDuration(min: number): number {

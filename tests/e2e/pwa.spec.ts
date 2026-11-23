@@ -24,7 +24,7 @@ test("la PWA abre sin red: tablero, presets, sesión e historial", async ({ page
 
   // Recarga completa sin red.
   await page.goto("/historial?id=inexistente");
-  await expect(page.getByRole("heading", { level: 1, name: /Historial|Aún no hay sesiones/ }).or(page.getByText("Aún no hay sesiones"))).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Historial" })).toBeVisible();
 
   // Crear una sesión sin red.
   await page.goto("/");

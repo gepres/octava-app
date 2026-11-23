@@ -20,7 +20,7 @@ test.describe("Matriz de flujos", () => {
     await expect(page.getByLabel("Código de 8 dígitos")).toHaveValue("10950702");
     // Entrada inválida: el error se asocia al campo e impide iniciar.
     await page.getByLabel("Código de 8 dígitos").fill("0035");
-    await expect(page.getByRole("alert")).toHaveText("Faltan 4 dígitos.");
+    await expect(page.getByRole("alert").filter({ hasText: "Faltan 4 dígitos." })).toBeVisible();
     await expect(page.getByLabel("Código de 8 dígitos")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByRole("button", { name: /^Iniciar sesión/ })).toBeDisabled();
     // El código persiste al recargar.
@@ -45,7 +45,7 @@ test.describe("Matriz de flujos", () => {
 
     // Aplicar carga en el Tablero sin iniciar.
     await page.getByRole("button", { name: "Aplicar Mañana tranquila" }).click();
-    await page.getByRole("link", { name: "Ir al Tablero" }).click();
+    await page.getByRole("link", { name: "Ir al Tablero", exact: true }).click();
     await expect(page.getByRole("button", { name: "Dial 4, valor 5" })).toBeVisible();
     expect(await countStore(page, "active")).toBe(0);
 

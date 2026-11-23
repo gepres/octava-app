@@ -27,6 +27,14 @@ export class RecordMissing extends Error {
   }
 }
 
+/** La nota cambió en otra pestaña desde que se abrió el editor. */
+export class NoteConflict extends Error {
+  constructor(readonly current: string) {
+    super("La nota cambió en otra pestaña.");
+    this.name = "NoteConflict";
+  }
+}
+
 export type TransitionResult =
   | { kind: "active"; session: ActiveSession }
   | { kind: "ended"; record: SessionRecord };
@@ -118,6 +126,31 @@ export async function finishEarly(expect: Expect, now?: number): Promise<Transit
 
 export async function setSessionSound(expect: Expect, soundOn: boolean, now?: number): Promise<TransitionResult> {
   return transition(expect, null, (s, t) => ({ next: { ...s, soundOn, rev: s.rev + 1, updatedAt: t } }), now);
+}
+
+/**
+ * El reloj del sistema retrocedió con la sesión abierta: se vuelve a anclar la marca de fin
+ * al restante medido con el reloj monotónico, para que el retroceso no alargue la sesión.
+ * No cambia `rev`: no es una acción de la persona.
+ */
+export async function rebaseRunning(expect: Expect, remaining: number, now = Date.now()): Promise<void> {
+  const db = await openOctavaDB();
+  const tx = db.transaction("active", "readwrite");
+  let changed = false;
+  try {
+    const cur = await tx.store.get("current");
+    if (cur && cur.id === expect.id && cur.rev === expect.rev && cur.status === "running") {
+      const rest = Math.max(0, Math.min(remaining, cur.durationMs));
+      await tx.store.put({ ...cur, endsAt: now + rest, segmentMs: rest, updatedAt: now });
+      changed = true;
+    }
+    await tx.done;
+  } catch (err) {
+    abortQuietly(tx);
+    await tx.done.catch(() => undefined);
+    throw new StorageError("No se pudo ajustar el temporizador.", err);
+  }
+  if (changed) publish("active");
 }
 
 type Step = { next: ActiveSession } | { end: "complete" | "end-early" };
@@ -216,13 +249,16 @@ export async function getRecord(id: string): Promise<SessionRecord | null> {
 }
 
 /** Guarda la nota releyendo el registro dentro de la transacción. No recrea registros borrados. */
-export async function saveNote(id: string, note: string, now = Date.now()): Promise<SessionRecord> {
+export async function saveNote(id: string, note: string, opts: { expected?: string; now?: number } = {}): Promise<SessionRecord> {
+  const now = opts.now ?? Date.now();
   const db = await openOctavaDB();
   const tx = db.transaction(["history", "kv"], "readwrite");
   let updated: SessionRecord;
   try {
     const rec = await tx.objectStore("history").get(id);
     if (!rec) throw new RecordMissing();
+    // Si otra pestaña cambió la nota desde que se abrió el editor, no se pisa sin avisar.
+    if (opts.expected !== undefined && rec.note !== opts.expected) throw new NoteConflict(rec.note);
     updated = { ...rec, note: note.trim(), noteUpdatedAt: now };
     await tx.objectStore("history").put(updated);
     const pending = (await tx.objectStore("kv").get("pendingNote")) as PendingNote | undefined;
@@ -231,7 +267,7 @@ export async function saveNote(id: string, note: string, now = Date.now()): Prom
   } catch (err) {
     abortQuietly(tx);
     await tx.done.catch(() => undefined);
-    if (err instanceof RecordMissing) throw err;
+    if (err instanceof RecordMissing || err instanceof NoteConflict) throw err;
     throw new StorageError("No se pudo guardar la nota.", err);
   }
   publish("history");

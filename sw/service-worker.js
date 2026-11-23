@@ -20,11 +20,12 @@ function segmentAlias(pathname) {
   return /\/__next\.[^/]+\.__PAGE__\.txt$/.test(pathname) ? pathname.replace(/\.__PAGE__\.txt$/, "/__PAGE__.txt") : pathname;
 }
 
-/** `/historial` → `/historial.html`; `/` → `/index.html`. */
-function htmlFor(pathname) {
-  if (pathname === "/" || pathname === "") return "/index.html";
-  const clean = pathname.replace(/\/+$/, "");
-  return clean.endsWith(".html") ? clean : `${clean}.html`;
+/** URL canónica de una página: `/historial.html` y `/historial/` → `/historial`; `/index.html` → `/`. */
+function pageKey(pathname) {
+  let p = pathname.replace(/\/+$/, "") || "/";
+  if (p.endsWith(".html")) p = p.slice(0, -5);
+  if (p === "/index" || p === "") p = "/";
+  return p;
 }
 
 self.addEventListener("install", (event) => {
@@ -32,7 +33,15 @@ self.addEventListener("install", (event) => {
     (async () => {
       const cache = await caches.open(CACHE);
       // Si falta un recurso indispensable, la instalación falla y sigue activa la versión anterior.
-      await cache.addAll(PRECACHE.map((p) => new Request(p, { cache: "reload" })));
+      await Promise.all(
+        PRECACHE.map(async (url) => {
+          const res = await fetch(new Request(url, { cache: "reload" }));
+          if (!res.ok) throw new Error(`Precache: ${url} respondió ${res.status}`);
+          // Una respuesta redirigida no sirve para una navegación: se guarda una copia limpia.
+          const clean = res.redirected ? new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers }) : res;
+          await cache.put(url, clean);
+        }),
+      );
     })(),
   );
   // Sin skipWaiting: la versión nueva espera a que se cierren las pestañas de la anterior.
@@ -69,7 +78,7 @@ self.addEventListener("fetch", (event) => {
 async function navigationResponse(req, url) {
   const cache = await caches.open(CACHE);
   // Primero la versión precacheada de esta build: coherente con sus chunks.
-  const cached = await cache.match(htmlFor(url.pathname));
+  const cached = await cache.match(pageKey(url.pathname));
   if (cached) return cached;
   try {
     return await fetch(req);

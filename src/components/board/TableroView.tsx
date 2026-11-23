@@ -8,10 +8,11 @@ import { codeToDials, dialsToCode, isValidCode } from "@/domain/code";
 import { formatClock, remainingMs } from "@/domain/timer";
 import { MAX_DURATION, MIN_DURATION, clampDuration, type Draft, type SessionConfig } from "@/domain/types";
 import { toneEngine } from "@/audio/engine";
-import { getDraft, getSettings, updateDraft } from "@/storage/kv";
+import { applyDraftPatch, effectiveTone, getDraft, getSettings, mergeDraftPatch, updateDraft, type DraftPatch } from "@/storage/kv";
 import { savePreset, validatePreset } from "@/storage/presets";
 import { ActiveSessionExists, getActive, getPendingNote, startSession } from "@/storage/sessions";
 import { useLive } from "@/hooks/useLive";
+import { subscribe } from "@/sync/channel";
 import { useIsDesktop, useNow, useObjectUrl } from "@/hooks/misc";
 import { useAnnounce } from "@/components/Announcer";
 import { Modal } from "@/components/Modal";
@@ -33,6 +34,7 @@ export function TableroView() {
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [codeValid, setCodeValid] = useState(true);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -40,29 +42,45 @@ export function TableroView() {
   const [startError, setStartError] = useState<string | null>(null);
 
   const draftRef = useRef<Draft | null>(null);
-  const dirty = useRef(false);
+  /** Cambios locales que aún no se confirmaron en IndexedDB. Solo los campos tocados. */
+  const pendingPatch = useRef<DraftPatch | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
+  const show = useCallback((d: Draft) => {
+    draftRef.current = d;
+    setDraft(d);
+  }, []);
+
+  // Se lee el borrador guardado y se reaplican encima los cambios locales pendientes.
   const fetchDraft = useCallback(() => {
     getDraft()
-      .then((d) => {
-        draftRef.current = d;
-        setDraft(d);
-      })
+      .then((d) => show(applyDraftPatch(d, pendingPatch.current)))
       .catch(() => setLoadError("No se pudo abrir el almacenamiento local de este navegador."));
-  }, []);
+  }, [show]);
   useEffect(fetchDraft, [fetchDraft]);
+  // Otra pestaña (o Presets e Historial) cambió el borrador: releer sin perder lo pendiente.
+  useEffect(() => subscribe((t) => {
+    if (t === "draft") fetchDraft();
+  }), [fetchDraft]);
   const load = () => {
     setLoadError(null);
     fetchDraft();
   };
 
+  /** Escribe los cambios pendientes. Si falla, se conservan para reintentar y se avisa. */
   const flush = useCallback(async () => {
     window.clearTimeout(timer.current);
-    const d = draftRef.current;
-    if (!d || !dirty.current) return;
-    dirty.current = false;
-    await updateDraft({ config: d.config, image: d.image });
+    const p = pendingPatch.current;
+    if (!p) return;
+    pendingPatch.current = null;
+    try {
+      await updateDraft(p);
+      setSaveFailed(false);
+    } catch (e) {
+      pendingPatch.current = mergeDraftPatch(p, pendingPatch.current);
+      setSaveFailed(true);
+      throw e;
+    }
   }, []);
 
   useEffect(() => {
@@ -75,33 +93,26 @@ export function TableroView() {
   }, [flush]);
 
   const change = useCallback(
-    (fn: (d: Draft) => Draft) => {
+    (p: DraftPatch) => {
       const cur = draftRef.current;
       if (!cur) return;
-      const next = fn(cur);
-      draftRef.current = next;
-      setDraft(next);
-      dirty.current = true;
+      show(applyDraftPatch(cur, p));
+      pendingPatch.current = mergeDraftPatch(pendingPatch.current, p);
       window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => void flush().catch(() => undefined), 300);
     },
-    [flush],
+    [flush, show],
   );
 
   const patch = useCallback(
-    (c: Partial<SessionConfig>) =>
-      change((d) => {
-        const touchesPreset = "code" in c || "durationMin" in c || "tone" in c;
-        return {
-          ...d,
-          config: {
-            ...d.config,
-            ...c,
-            witness: { ...d.config.witness, ...c.witness },
-            ...(touchesPreset && !("presetId" in c) ? { presetId: undefined, presetName: undefined } : {}),
-          },
-        };
-      }),
+    (c: Partial<SessionConfig>, extra: Omit<DraftPatch, "config"> = {}) => {
+      // Tocar código, duración o tono deja de corresponder al preset aplicado.
+      const touchesPreset = "code" in c || "durationMin" in c || "tone" in c;
+      change({
+        ...extra,
+        config: { ...c, ...(touchesPreset && !("presetId" in c) ? { presetId: undefined, presetName: undefined } : {}) },
+      });
+    },
     [change],
   );
 
@@ -112,13 +123,21 @@ export function TableroView() {
   async function start() {
     const d = draftRef.current;
     if (!d || !canStart) return;
-    if (d.config.tone !== null) toneEngine.unlock(); // dentro del gesto
+    if (effectiveTone(d, settings.data) !== null) toneEngine.unlock(); // dentro del gesto
     setStarting(true);
     setStartError(null);
     try {
-      dirty.current = true;
       await flush();
-      await startSession(draftRef.current ?? d, { soundOn: d.config.tone !== null });
+    } catch {
+      setStartError("No se pudo guardar el borrador en este dispositivo. Inténtalo de nuevo.");
+      setStarting(false);
+      return;
+    }
+    try {
+      // Se inicia desde lo guardado, con el tono resuelto (Ajustes o elección explícita).
+      const fresh = await getDraft();
+      const tone = effectiveTone(fresh, settings.data);
+      await startSession({ ...fresh, config: { ...fresh.config, tone } }, { soundOn: tone !== null });
       // Pedir almacenamiento persistente al guardar la primera sesión (fuera de la transacción).
       void navigator.storage?.persist?.().catch(() => undefined);
       announce("Sesión iniciada.");
@@ -154,7 +173,7 @@ export function TableroView() {
   }
 
   const dials = codeToDials(draft.config.code);
-  const tone = draft.config.tone;
+  const tone = effectiveTone(draft, settings.data);
   const soundText = tone !== null ? `Tono de ${tone} Hz · volumen bajo` : "Apagado";
 
   const banners = (
@@ -174,6 +193,16 @@ export function TableroView() {
         <p role="alert" className="m-0 flex items-center gap-2 text-sm text-danger">
           <IconAlert size={16} /> {startError}
         </p>
+      ) : null}
+      {saveFailed ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[18px] border border-danger-strong/40 bg-danger-strong/10 px-4 py-3">
+          <span className="flex flex-1 items-center gap-2 text-sm">
+            <IconAlert size={16} className="text-danger" /> No se pudo guardar el borrador en este dispositivo. Tus cambios siguen en pantalla.
+          </span>
+          <button type="button" className="btn-glass !min-h-11 !px-4 !text-sm" onClick={() => void flush().catch(() => undefined)}>
+            Reintentar
+          </button>
+        </div>
       ) : null}
     </>
   );
@@ -223,12 +252,12 @@ export function TableroView() {
                   alias={draft.config.witness.alias}
                   image={draft.image}
                   onAlias={(a) => patch({ witness: { alias: a } })}
-                  onImage={(img) => change((d) => ({ ...d, image: img }))}
+                  onImage={(img) => change({ image: img })}
                 />
               </div>
               <SoundRow on={tone !== null} text={soundText} onToggle={() => {
                 if (tone === null) toneEngine.unlock();
-                patch({ tone: tone === null ? settings.data?.tone ?? 432 : null });
+                patch({ tone: tone === null ? settings.data?.tone ?? 432 : null }, { toneFromSettings: false });
               }} />
               <div className="mt-2 flex flex-col gap-2.5">
                 {startButton}
@@ -252,7 +281,7 @@ export function TableroView() {
               <div className="px-4 py-1">
                 <SoundRow compact on={tone !== null} text={soundText} onToggle={() => {
                   if (tone === null) toneEngine.unlock();
-                  patch({ tone: tone === null ? settings.data?.tone ?? 432 : null });
+                  patch({ tone: tone === null ? settings.data?.tone ?? 432 : null }, { toneFromSettings: false });
                 }} />
               </div>
             </div>
@@ -283,15 +312,14 @@ export function TableroView() {
           alias={draft.config.witness.alias}
           image={draft.image}
           onAlias={(a) => patch({ witness: { alias: a } })}
-          onImage={(img) => change((d) => ({ ...d, image: img }))}
+          onImage={(img) => change({ image: img })}
         />
         <button type="button" className="btn-go" onClick={() => setSheet(null)}>Listo</button>
       </Modal>
       <SavePresetModal
-        key={sheet === "preset" ? "abierto" : "cerrado"}
         open={sheet === "preset"}
         onClose={() => setSheet(null)}
-        config={draft.config}
+        config={{ ...draft.config, tone }}
         onSaved={(name) => {
           setSheet(null);
           setToast({ text: `Preset «${name}» guardado`, href: "/presets", linkText: "Ver presets" });
@@ -456,10 +484,18 @@ function IntentionSheet({ value, onChange, onDone }: { value: string; onChange: 
 function SavePresetModal({ open, onClose, config, onSaved }: { open: boolean; onClose: () => void; config: SessionConfig; onSaved: (name: string) => void }) {
   const id = useId();
   const errId = useId();
-  // Se monta de nuevo en cada apertura (key), así parte del nombre del preset aplicado.
   const [name, setName] = useState(config.presetName ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    // Al abrir se reinician los campos durante el render; el <dialog> sigue montado para devolver el foco.
+    setWasOpen(open);
+    if (open) {
+      setName(config.presetName ?? "");
+      setError(null);
+    }
+  }
 
   async function save() {
     const input = { name, code: config.code, durationMin: config.durationMin, tone: config.tone };

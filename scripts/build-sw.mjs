@@ -36,11 +36,17 @@ for (const f of all) {
   hash.update(f).update(buf);
 }
 const version = hash.digest("hex").slice(0, 12);
-const urls = all.map((f) => `/${f}`);
+// El HTML se precachea con su URL canónica (`/presets`, `/`), como la pide el navegador,
+// para que un hosting que redirige `x.html` → `x` no deje respuestas redirigidas en la caché.
+const urls = all.map((f) => {
+  if (f === "index.html") return "/";
+  if (f.endsWith(".html")) return `/${f.slice(0, -5)}`;
+  return `/${f}`;
+});
 
 const template = await readFile(path.join(root, "sw", "service-worker.js"), "utf8");
 const sw = template.replace('"__VERSION__"', JSON.stringify(version)).replace("__PRECACHE__", JSON.stringify(urls, null, 0));
 await writeFile(path.join(out, "sw.js"), sw);
 
-const pages = urls.filter((u) => u.endsWith(".html"));
+const pages = all.filter((f) => f.endsWith(".html")).map((f) => (f === "index.html" ? "/" : `/${f.slice(0, -5)}`));
 console.log(`sw.js: versión ${version}, ${urls.length} archivos (${(bytes / 1024).toFixed(0)} KB), páginas: ${pages.join(", ")}`);

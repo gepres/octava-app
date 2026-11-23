@@ -35,6 +35,11 @@ export function CodeEditor({ dials, onChange, onValidityChange, large = false }:
     const next = dials.slice();
     next[i] = clampDial(v);
     onChange(next);
+    if (editing) {
+      // Un solo valor visible: el campo de texto refleja lo que hace la perilla.
+      setText(dialsToCode(next));
+      setError(null);
+    }
   }
 
   function moveSel(i: number) {

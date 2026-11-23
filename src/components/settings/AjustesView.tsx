@@ -208,7 +208,7 @@ function InstallSection() {
               <>Elige <strong className="font-semibold">Añadir a pantalla de inicio</strong>.</>,
               <>Ábrela desde su icono.</>,
             ]}
-            foot="Instalada, Safari conserva mejor tus datos locales."
+            foot="La app instalada guarda sus datos aparte de Safari: lo que guardes en una no aparece en la otra. Ábrela una vez con conexión para que quede lista sin red."
           />
         ) : platform === "mac-safari" ? (
           <Steps

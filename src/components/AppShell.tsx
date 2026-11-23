@@ -7,7 +7,8 @@ import clsx from "clsx";
 import { AnnouncerProvider } from "./Announcer";
 import { IconBoard, IconBookmark, IconDatabase, IconHistory, IconSliders } from "./Icons";
 import { startPwa } from "@/pwa/pwa";
-import { reconcileExpired } from "@/storage/sessions";
+import { getActive, reconcileExpired } from "@/storage/sessions";
+import { useLive } from "@/hooks/useLive";
 
 const NAV = [
   { href: "/", label: "Tablero", Icon: IconBoard },
@@ -37,6 +38,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", run);
     };
   }, []);
+
+  // Programa el cierre en la marca de fin de la sesión activa, esté donde esté la persona.
+  const active = useLive(["active"], getActive);
+  const endsAt = active.data?.status === "running" ? active.data.endsAt : null;
+  useEffect(() => {
+    if (endsAt === null) return;
+    const wait = Math.min(Math.max(0, endsAt - Date.now()) + 50, 2_000_000_000);
+    const id = window.setTimeout(() => void reconcileExpired().catch(() => undefined), wait);
+    return () => window.clearTimeout(id);
+  }, [endsAt]);
 
   const isOn = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 

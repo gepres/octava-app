@@ -7,7 +7,7 @@ import clsx from "clsx";
 import { codeFigurePoints } from "@/domain/code";
 import { formatClock } from "@/domain/timer";
 import type { SessionRecord } from "@/domain/types";
-import { deleteRecord, getImageBlob, listHistory, RecordMissing, saveNote } from "@/storage/sessions";
+import { deleteRecord, getImageBlob, listHistory, NoteConflict, RecordMissing, saveNote } from "@/storage/sessions";
 import { draftFromRecord } from "@/storage/kv";
 import { useLive } from "@/hooks/useLive";
 import { useIsDesktop, useObjectUrl } from "@/hooks/misc";
@@ -185,7 +185,13 @@ function RecordDetail({ record, onDeleted }: { record: SessionRecord; onDeleted:
   const announce = useAnnounce();
   const noteId = useId();
   const [note, setNote] = useState(record.note);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error" | "missing">("idle");
+  // Versión guardada sobre la que se edita. Si otra pestaña la cambia y aquí nadie escribió, se adopta.
+  const [base, setBase] = useState(record.note);
+  if (record.note !== base && note === base) {
+    setBase(record.note);
+    setNote(record.note);
+  }
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error" | "missing" | "conflict">("idle");
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -205,10 +211,17 @@ function RecordDetail({ record, onDeleted }: { record: SessionRecord; onDeleted:
   async function save() {
     setSaveState("saving");
     try {
-      await saveNote(record.id, note);
+      const updated = await saveNote(record.id, note, { expected: base });
+      setBase(updated.note);
+      setNote(updated.note);
       setSaveState("saved");
     } catch (e) {
-      setSaveState(e instanceof RecordMissing ? "missing" : "error");
+      if (e instanceof NoteConflict) {
+        setBase(e.current);
+        setSaveState("conflict");
+      } else {
+        setSaveState(e instanceof RecordMissing ? "missing" : "error");
+      }
     }
   }
 
@@ -292,11 +305,19 @@ function RecordDetail({ record, onDeleted }: { record: SessionRecord; onDeleted:
           }}
         />
         <div className="flex items-center gap-3">
-          <button type="button" className="btn-soft" onClick={() => void save()} disabled={saveState === "saving" || note === record.note}>
-            {record.note ? "Guardar cambios" : "Guardar nota"}
+          <button type="button" className="btn-soft" onClick={() => void save()} disabled={saveState === "saving" || note === base}>
+            {base ? "Guardar cambios" : "Guardar nota"}
           </button>
           <span role="status" className="text-[13px] text-ink-3">
-            {saveState === "saved" ? "Nota guardada." : saveState === "error" ? "No se pudo guardar. Tu texto sigue aquí." : saveState === "missing" ? "Este registro ya no existe." : ""}
+            {saveState === "saved"
+              ? "Nota guardada."
+              : saveState === "error"
+                ? "No se pudo guardar. Tu texto sigue aquí."
+                : saveState === "missing"
+                  ? "Este registro ya no existe."
+                  : saveState === "conflict"
+                    ? "La nota cambió en otra pestaña. Tu texto sigue aquí; si lo guardas, la reemplaza."
+                    : ""}
           </span>
         </div>
       </div>
