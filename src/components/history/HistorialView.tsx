@@ -14,6 +14,7 @@ import { useIsDesktop, useObjectUrl } from "@/hooks/misc";
 import { useAnnounce } from "@/components/Announcer";
 import { Modal } from "@/components/Modal";
 import { IconChevronLeft, IconChevronRight, IconRepeat, IconTrash } from "@/components/Icons";
+import { useGuide } from "@/guide/useGuide";
 
 type Filter = "all" | "completed" | "ended-early";
 const FILTERS: Array<[Filter, string]> = [
@@ -30,6 +31,7 @@ export function HistorialView() {
   const history = useLive(["history"], listHistory);
   const [filter, setFilter] = useState<Filter>("all");
   const selectedId = params.get("id");
+  useGuide("historial", !history.loading);
 
   const records = useMemo(() => history.data ?? [], [history.data]);
   const visible = useMemo(() => records.filter((r) => filter === "all" || r.status === filter), [records, filter]);
@@ -54,7 +56,7 @@ export function HistorialView() {
   if (!history.loading && records.length === 0) {
     return (
       <Wrap>
-        <div className="glass mx-auto mt-6 flex max-w-md flex-col items-center gap-4 rounded-[28px] p-8 text-center">
+        <div data-tour="history-empty" className="glass mx-auto mt-6 flex max-w-md flex-col items-center gap-4 rounded-[28px] p-8 text-center">
           <h2 className="m-0 text-xl font-semibold">Aún no hay sesiones</h2>
           <p className="m-0 text-ink-2">Cuando termines una sesión aparecerá aquí con su código, su duración y tu nota.</p>
           <Link href="/" className="btn-go no-underline">Ir al Tablero</Link>
@@ -87,7 +89,7 @@ export function HistorialView() {
   return (
     <Wrap
       actions={
-        <div className="seg grid-cols-3" role="group" aria-label="Filtrar por estado">
+        <div className="seg grid-cols-3" role="group" aria-label="Filtrar por estado" data-tour="history-filter">
           {FILTERS.map(([f, label]) => (
             <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className="!px-3">
               {label}
@@ -99,7 +101,7 @@ export function HistorialView() {
       <div className="flex flex-wrap items-start gap-[22px]">
         <section aria-label="Sesiones" className="min-w-0 flex-[3_1_520px]">
           {visible.length === 0 ? <p className="text-ink-3">No hay sesiones con este filtro.</p> : null}
-          <ul className="m-0 flex list-none flex-col gap-2 p-0 lg:glass lg:gap-1 lg:rounded-[26px] lg:p-2.5">
+          <ul data-tour="history-list" className="m-0 flex list-none flex-col gap-2 p-0 lg:glass lg:gap-1 lg:rounded-[26px] lg:p-2.5">
             {visible.map((r) => {
               const on = isDesktop && current?.id === r.id;
               return (
@@ -131,7 +133,7 @@ export function HistorialView() {
           </ul>
         </section>
         {isDesktop && current ? (
-          <section aria-label="Detalle de la sesión" className="min-w-0 flex-[2_1_360px]">
+          <section aria-label="Detalle de la sesión" data-tour="history-detail" className="min-w-0 flex-[2_1_360px]">
             <RecordDetail key={current.id} record={current} onDeleted={() => router.replace(pathname, { scroll: false })} />
           </section>
         ) : null}

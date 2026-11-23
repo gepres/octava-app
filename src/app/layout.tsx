@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { AppShell } from "@/components/AppShell";
+import "driver.js/dist/driver.css";
 import "./globals.css";
 
 // La fuente se descarga en el build y se sirve desde la propia app: funciona sin red.

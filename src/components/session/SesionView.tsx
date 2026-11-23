@@ -27,6 +27,7 @@ import {
 import { useLive } from "@/hooks/useLive";
 import { useDocumentVisible, useNow, useObjectUrl, useReducedMotion } from "@/hooks/misc";
 import { useAnnounce } from "@/components/Announcer";
+import { useGuide } from "@/guide/useGuide";
 import { Modal } from "@/components/Modal";
 import { IconAlert, IconChevronLeft, IconPause, IconPlay, IconStop, IconVolume, IconVolumeOff } from "@/components/Icons";
 
@@ -49,6 +50,7 @@ export function SesionView() {
   const rest = s ? remainingMs(s, now) : 0;
   const visible = useDocumentVisible();
   const reduced = useReducedMotion();
+  const openGuide = useGuide("sesion", !!active.data);
   const confirmOpen = !!confirmFor && !!s && confirmFor.id === s.id && confirmFor.rev === s.rev;
 
   // Si el reloj del sistema retrocede con la sesión abierta, se ancla el restante al reloj monotónico.
@@ -179,9 +181,9 @@ export function SesionView() {
   const chip = running ? "En curso" : "En pausa";
 
   return (
-    <Frame>
+    <Frame onGuide={(el) => openGuide(el)}>
       <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center lg:gap-10">
-        <section aria-label="Tiempo de la sesión" className="flex flex-col items-center gap-3">
+        <section aria-label="Tiempo de la sesión" data-tour="session-timer" className="flex flex-col items-center gap-3">
           <span className={clsx("inline-flex h-[30px] items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-[13px] font-semibold", running ? "text-turq" : "text-amber")}>
             <span className={clsx("h-[7px] w-[7px] rounded-full", running ? "bg-turq shadow-[0_0_10px_#6BE4D7]" : "bg-amber")} />
             {chip}
@@ -227,7 +229,7 @@ export function SesionView() {
         </section>
 
         <section aria-label="Resumen y controles" className="flex flex-col gap-5">
-          <dl className="glass order-3 m-0 grid lg:order-none grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3 rounded-[22px] px-5 py-4">
+          <dl data-tour="session-summary" className="glass order-3 m-0 grid lg:order-none grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3 rounded-[22px] px-5 py-4">
             <dt className="text-[13px] text-ink-3">Código</dt>
             <dd className="m-0 text-lg font-medium tracking-[0.16em]">{s.config.code}</dd>
             <dt className="text-[13px] text-ink-3">Duración</dt>
@@ -269,7 +271,7 @@ export function SesionView() {
             />
           ) : null}
 
-          <div className="order-1 flex items-center justify-center gap-6 lg:order-none lg:justify-start">
+          <div data-tour="session-controls" className="order-1 flex items-center justify-center gap-6 lg:order-none lg:justify-start">
             <div className="flex flex-col items-center gap-2">
               <button type="button" className="round !h-16 !w-16" onClick={() => setConfirmFor({ id: s.id, rev: s.rev })} disabled={busy} aria-label="Finalizar">
                 <IconStop />
@@ -340,7 +342,7 @@ export function SesionView() {
   );
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({ children, onGuide }: { children: React.ReactNode; onGuide?: (el: HTMLElement) => void }) {
   return (
     <div className="mx-auto w-full max-w-[1160px] px-4 pb-10 lg:px-9 lg:pt-6">
       <header className="flex h-[60px] items-center justify-between">
@@ -349,7 +351,13 @@ function Frame({ children }: { children: React.ReactNode }) {
           Tablero
         </Link>
         <h1 className="m-0 text-lg font-semibold tracking-[-0.02em] text-ink-2">Sesión</h1>
-        <span className="w-[86px]" aria-hidden="true" />
+        {onGuide ? (
+          <button type="button" className="btn-link w-[86px] justify-end !text-ink-2" onClick={(e) => onGuide(e.currentTarget)}>
+            Guía
+          </button>
+        ) : (
+          <span className="w-[86px]" aria-hidden="true" />
+        )}
       </header>
       {children}
     </div>

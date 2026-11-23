@@ -13,6 +13,7 @@ import { savePreset, validatePreset } from "@/storage/presets";
 import { ActiveSessionExists, getActive, getPendingNote, startSession } from "@/storage/sessions";
 import { useLive } from "@/hooks/useLive";
 import { subscribe } from "@/sync/channel";
+import { useGuide } from "@/guide/useGuide";
 import { useIsDesktop, useNow, useObjectUrl } from "@/hooks/misc";
 import { useAnnounce } from "@/components/Announcer";
 import { Modal } from "@/components/Modal";
@@ -117,6 +118,8 @@ export function TableroView() {
   );
 
   const onValidity = useCallback((v: boolean) => setCodeValid(v), []);
+  const openGuide = useGuide("tablero", !!draft);
+  const helpButton = () => document.querySelector<HTMLElement>('[data-guide-return="tablero"]');
   const hasActive = !!active.data;
   const canStart = !!draft && codeValid && isValidCode(draft.config.code) && !hasActive && !starting;
 
@@ -208,7 +211,7 @@ export function TableroView() {
   );
 
   const startButton = (
-    <button type="button" className="btn-go flex-1" onClick={() => void start()} disabled={!canStart} aria-describedby={hasActive ? "inicio-bloqueado" : undefined}>
+    <button type="button" data-tour="start" className="btn-go flex-1" onClick={() => void start()} disabled={!canStart} aria-describedby={hasActive ? "inicio-bloqueado" : undefined}>
       <IconPlay />
       {starting ? "Iniciando…" : isDesktop ? `Iniciar sesión · ${draft.config.durationMin} min` : "Iniciar sesión"}
     </button>
@@ -244,7 +247,7 @@ export function TableroView() {
             <>
               <IntentionInline value={draft.config.intention} onChange={(v) => patch({ intention: v })} />
               <DurationField value={draft.config.durationMin} onChange={(m) => patch({ durationMin: m })} chips />
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2" data-tour="witness">
                 <span className="text-sm font-medium">
                   Testigo <span className="font-normal text-ink-3">· opcional, una referencia de la sesión</span>
                 </span>
@@ -261,7 +264,7 @@ export function TableroView() {
               }} />
               <div className="mt-2 flex flex-col gap-2.5">
                 {startButton}
-                <button type="button" className="btn-glass" onClick={() => setSheet("preset")} disabled={!codeValid}>
+                <button type="button" data-tour="save-preset" className="btn-glass" onClick={() => setSheet("preset")} disabled={!codeValid}>
                   <IconBookmarkPlus size={18} />
                   Guardar como preset
                 </button>
@@ -269,7 +272,7 @@ export function TableroView() {
             </>
           ) : (
             <div className="glass overflow-hidden rounded-[22px] py-1">
-              <RowButton icon={<IconPen size={18} />} title="Intención" detail={draft.config.intention || "Añade una intención"} muted={!draft.config.intention} onClick={() => setSheet("intent")} />
+              <RowButton tour="intention" icon={<IconPen size={18} />} title="Intención" detail={draft.config.intention || "Añade una intención"} muted={!draft.config.intention} onClick={() => setSheet("intent")} />
               <Sep />
               <div className="flex min-h-16 items-center gap-3.5 px-4 py-2.5">
                 <span className="ico"><IconClock size={18} /></span>
@@ -296,7 +299,7 @@ export function TableroView() {
         <>
           <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 bottom-0 z-10 h-[210px] bg-gradient-to-b from-transparent via-carbon/90 to-carbon" />
           <div className="fixed inset-x-4 bottom-[96px] z-20 flex items-center gap-3">
-            <button type="button" className="round !h-14 !w-14" aria-label="Guardar como preset" onClick={() => setSheet("preset")} disabled={!codeValid}>
+            <button type="button" data-tour="save-preset" className="round !h-14 !w-14" aria-label="Guardar como preset" onClick={() => setSheet("preset")} disabled={!codeValid}>
               <IconBookmarkPlus size={22} />
             </button>
             {startButton}
@@ -327,7 +330,20 @@ export function TableroView() {
       />
       <Modal open={sheet === "help"} onClose={() => setSheet(null)} title="Ayuda">
         <HelpSteps />
-        <button type="button" className="btn-go" onClick={() => setSheet(null)}>Entendido</button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="btn-glass flex-1"
+            onClick={() => {
+              setSheet(null);
+              // Se cierra el diálogo y, ya devuelto el foco, empieza la guía.
+              window.setTimeout(() => openGuide(helpButton()), 80);
+            }}
+          >
+            Ver la guía paso a paso
+          </button>
+          <button type="button" className="btn-go flex-1" onClick={() => setSheet(null)}>Entendido</button>
+        </div>
       </Modal>
 
       <Toast toast={toast} onDone={() => setToast(null)} className="inset-x-4 bottom-[166px] lg:inset-x-auto lg:bottom-7 lg:right-9" />
@@ -340,7 +356,7 @@ function Shell({ children, onHelp }: { children: React.ReactNode; onHelp: () => 
     <div className="mx-auto w-full max-w-[1160px] px-4 pb-[200px] lg:px-9 lg:pb-10 lg:pt-6">
       <header className="flex h-[60px] items-center justify-between lg:h-auto lg:pb-5">
         <h1 className="m-0 text-2xl font-semibold tracking-[-0.025em] lg:text-[32px] lg:tracking-[-0.03em]">Tablero</h1>
-        <button type="button" className="round sm lg:!h-11 lg:!w-auto lg:gap-2 lg:!rounded-[22px] lg:!px-4" aria-label="Ayuda" onClick={onHelp}>
+        <button type="button" data-guide-return="tablero" className="round sm lg:!h-11 lg:!w-auto lg:gap-2 lg:!rounded-[22px] lg:!px-4" aria-label="Ayuda" onClick={onHelp}>
           <IconHelp size={20} />
           <span className="hidden text-[15px] lg:inline" aria-hidden="true">Ayuda</span>
         </button>
@@ -368,9 +384,9 @@ function Sep() {
   return <div className="ml-[66px] h-px bg-white/[0.06]" />;
 }
 
-function RowButton({ icon, title, detail, muted, onClick }: { icon: React.ReactNode; title: string; detail: string; muted?: boolean; onClick: () => void }) {
+function RowButton({ icon, title, detail, muted, onClick, tour }: { icon: React.ReactNode; title: string; detail: string; muted?: boolean; onClick: () => void; tour?: string }) {
   return (
-    <button type="button" onClick={onClick} className="flex min-h-16 w-full items-center gap-3.5 bg-transparent px-4 py-2.5 text-left text-ink hover:bg-white/[0.03]">
+    <button type="button" data-tour={tour} onClick={onClick} className="flex min-h-16 w-full items-center gap-3.5 bg-transparent px-4 py-2.5 text-left text-ink hover:bg-white/[0.03]">
       <span className="ico">{icon}</span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-[15px] font-medium">{title}</span>
@@ -386,7 +402,7 @@ function WitnessRow({ draft, onClick }: { draft: Draft; onClick: () => void }) {
   const alias = draft.config.witness.alias;
   const detail = alias && draft.image ? `${alias} · con imagen` : alias || (draft.image ? "Con imagen" : "Sin testigo");
   return (
-    <button type="button" onClick={onClick} className="flex min-h-16 w-full items-center gap-3.5 bg-transparent px-4 py-2.5 text-left text-ink hover:bg-white/[0.03]">
+    <button type="button" data-tour="witness" onClick={onClick} className="flex min-h-16 w-full items-center gap-3.5 bg-transparent px-4 py-2.5 text-left text-ink hover:bg-white/[0.03]">
       <span className="ico"><IconImage size={18} /></span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-[15px] font-medium">
@@ -407,7 +423,7 @@ function WitnessRow({ draft, onClick }: { draft: Draft; onClick: () => void }) {
 function DurationField({ value, onChange, chips }: { value: number; onChange: (m: number) => void; chips?: boolean }) {
   const id = useId();
   return (
-    <div role="group" aria-labelledby={id} className={clsx("flex flex-1 flex-col gap-2.5", !chips && "flex-row items-center")}>
+    <div role="group" aria-labelledby={id} data-tour="duration" className={clsx("flex flex-1 flex-col gap-2.5", !chips && "flex-row items-center")}>
       <span id={id} className={clsx("font-medium", chips ? "text-sm" : "flex-1 text-[15px]")}>Duración</span>
       <div className="flex items-center gap-3">
         <button type="button" className="round sm" aria-label="Restar un minuto" disabled={value <= MIN_DURATION} onClick={() => onChange(clampDuration(value - 1))}>
@@ -445,7 +461,7 @@ function DurationField({ value, onChange, chips }: { value: number; onChange: (m
 function SoundRow({ on, text, onToggle, compact }: { on: boolean; text: string; onToggle: () => void; compact?: boolean }) {
   const id = useId();
   return (
-    <div className={clsx("flex items-center gap-3.5", compact ? "min-h-14" : "")}>
+    <div data-tour="sound" className={clsx("flex items-center gap-3.5", compact ? "min-h-14" : "")}>
       {compact ? <span className="ico"><IconVolume size={18} /></span> : null}
       <div className="flex flex-1 flex-col gap-0.5">
         <span id={id} className="text-[15px] font-medium">Sonido ambiental</span>
@@ -461,7 +477,7 @@ function SoundRow({ on, text, onToggle, compact }: { on: boolean; text: string; 
 function IntentionInline({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2" data-tour="intention">
       <label htmlFor={id} className="text-sm font-medium">Intención</label>
       <textarea id={id} className="field resize-none" rows={3} maxLength={280} value={value} placeholder="¿Qué quieres sostener en esta sesión?" onChange={(e) => onChange(e.target.value)} />
       <span className="text-[13px] text-ink-3">Se guarda en la ficha de la sesión, no en el preset.</span>

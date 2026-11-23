@@ -7,6 +7,8 @@ import { useLive } from "@/hooks/useLive";
 import { useReducedMotion } from "@/hooks/misc";
 import { canPromptInstall, detectPlatform, isStandalone, offlineReady, promptInstall, subscribePwa, type Platform } from "@/pwa/pwa";
 import { HELP_TEXT } from "@/components/HelpText";
+import { useRouter } from "next/navigation";
+import { useGuide } from "@/guide/useGuide";
 import { formatBytes } from "@/media/image";
 import { IconAlert, IconCheck, IconDownload, IconRotate, IconShare, IconVolume } from "@/components/Icons";
 
@@ -15,6 +17,8 @@ export function AjustesView() {
   const reduced = useReducedMotion();
   const [error, setError] = useState<string | null>(null);
   const s = settings.data;
+  const router = useRouter();
+  useGuide("ajustes", !!settings.data);
 
   async function update(patch: Partial<Omit<Settings, "key">>) {
     setError(null);
@@ -33,7 +37,7 @@ export function AjustesView() {
       {error ? <p role="alert" className="mb-3 text-sm text-danger">{error}</p> : null}
       <div className="flex flex-wrap items-start gap-[22px]">
         <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-[22px]">
-          <Section title="Sonido">
+          <Section title="Sonido" tour="settings-sound">
             <div className="glass overflow-hidden rounded-[22px]">
               <SwitchRow
                 icon={<IconVolume size={18} />}
@@ -52,7 +56,7 @@ export function AjustesView() {
             </p>
           </Section>
 
-          <Section title="Movimiento">
+          <Section title="Movimiento" tour="settings-motion">
             <div className="glass overflow-hidden rounded-[22px]">
               <SwitchRow
                 icon={<IconRotate size={18} />}
@@ -69,10 +73,13 @@ export function AjustesView() {
             ) : null}
           </Section>
 
-          <Section title="Ayuda">
+          <Section title="Ayuda" tour="settings-help">
             <p className="m-0 rounded-[22px] border border-copper-light/35 bg-gradient-to-b from-copper/[0.12] to-copper/[0.04] px-[18px] py-4 text-[15px] leading-relaxed">
               {HELP_TEXT}
             </p>
+            <button type="button" className="btn-soft self-start" onClick={() => router.push("/?guia=1")}>
+              Recorrer la guía de uso
+            </button>
           </Section>
         </div>
 
@@ -90,10 +97,10 @@ export function AjustesView() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, tour }: { title: string; children: React.ReactNode; tour?: string }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-2">
+    <section aria-labelledby={id} data-tour={tour} className="flex flex-col gap-2">
       <h2 id={id} className="m-0 ml-1 text-[13px] font-medium text-ink-3">{title}</h2>
       {children}
     </section>
@@ -184,7 +191,7 @@ function InstallSection() {
   const canPrompt = canPromptInstall();
 
   return (
-    <Section title="Instalar la app">
+    <Section title="Instalar la app" tour="settings-install">
       <div className="glass flex flex-col gap-3.5 rounded-[22px] p-[18px]">
         <div className="flex items-center gap-3.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -277,7 +284,7 @@ function DataSection() {
 
   const ready = pwa.split("|")[2] === "true";
   return (
-    <Section title="Tus datos">
+    <Section title="Tus datos" tour="settings-data">
       <div className="glass flex flex-col gap-3 rounded-[22px] p-[18px]">
         <p className="m-0 text-[15px] leading-normal text-ink-2">
           Presets, sesiones, notas e imágenes se guardan solo en este navegador. Sin cuenta y sin copia en internet.

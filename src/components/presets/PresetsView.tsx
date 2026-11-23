@@ -11,6 +11,7 @@ import { useIsDesktop } from "@/hooks/misc";
 import { useAnnounce } from "@/components/Announcer";
 import { Modal } from "@/components/Modal";
 import { Toast, type ToastData } from "@/components/Toast";
+import { useGuide } from "@/guide/useGuide";
 import { IconPencil, IconPlus, IconTrash } from "@/components/Icons";
 
 interface Editing {
@@ -34,6 +35,7 @@ export function PresetsView() {
   const [error, setError] = useState<string | null>(null);
 
   const list = presets.data ?? [];
+  useGuide("presets", !!presets.data);
   // En escritorio el panel siempre está visible: por defecto edita el primero propio o crea uno.
   const ownFirst = list.find((p) => !p.example);
   const editing: Editing | null = chosen ?? (isDesktop && presets.data ? (ownFirst ? toEditing(ownFirst) : blank()) : null);
@@ -95,7 +97,7 @@ export function PresetsView() {
           <h1 className="m-0 text-2xl font-semibold tracking-[-0.025em] lg:text-[32px] lg:tracking-[-0.03em]">Presets</h1>
           <p className="m-0 text-sm leading-normal text-ink-3 lg:text-[15px]">Guardan código, duración y tono. Aplicar uno lo carga en el Tablero sin iniciar la sesión.</p>
         </div>
-        <button type="button" className="btn-glass !min-h-11 !px-4" onClick={() => openEdit(null)}>
+        <button type="button" data-tour="preset-new" className="btn-glass !min-h-11 !px-4" onClick={() => openEdit(null)}>
           <IconPlus size={18} />
           Nuevo preset
         </button>
@@ -109,11 +111,13 @@ export function PresetsView() {
           {list.length === 0 && !presets.loading ? (
             <p className="text-ink-3">Todavía no hay presets. Crea uno o guárdalo desde el Tablero.</p>
           ) : null}
-          {list.map((p) => {
+          {list.map((p, i) => {
             const on = isDesktop && editing?.id === p.id;
+            const first = i === 0;
             return (
               <article
                 key={p.id}
+                data-tour={first ? "preset-card" : undefined}
                 className={clsx(
                   "flex flex-col gap-3.5 rounded-[22px] border p-4 transition-colors",
                   on ? "border-turq/45 bg-gradient-to-b from-turq-deep/[0.13] to-turq-deep/[0.03]" : "glass",
@@ -128,7 +132,7 @@ export function PresetsView() {
                       {p.durationMin} min · {p.tone ? `${p.tone} Hz` : "Sin sonido"}
                     </span>
                   </div>
-                  <button type="button" className="round sm" aria-label={`Editar ${p.name}`} onClick={() => openEdit(p)}>
+                  <button type="button" data-tour={first ? "preset-edit" : undefined} className="round sm" aria-label={`Editar ${p.name}`} onClick={() => openEdit(p)}>
                     <IconPencil size={18} />
                   </button>
                 </div>
@@ -138,7 +142,7 @@ export function PresetsView() {
                   ) : (
                     <span className="text-[13px] text-ink-3">Editado {relative(p.updatedAt)}</span>
                   )}
-                  <button type="button" className="btn-soft" aria-label={`Aplicar ${p.name}`} onClick={() => void apply(p)}>
+                  <button type="button" data-tour={first ? "preset-apply" : undefined} className="btn-soft" aria-label={`Aplicar ${p.name}`} onClick={() => void apply(p)}>
                     Aplicar
                   </button>
                 </div>

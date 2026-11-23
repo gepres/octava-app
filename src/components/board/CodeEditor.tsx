@@ -95,7 +95,7 @@ export function CodeEditor({ dials, onChange, onValidityChange, large = false }:
           <h2 id={`${inputId}-t`} className="m-0 text-[13px] font-medium text-ink-3">
             Código
           </h2>
-          <button ref={toggleRef} type="button" className="btn-link" onClick={toggleEdit} aria-expanded={editing}>
+          <button ref={toggleRef} type="button" data-tour="write-code" className="btn-link" onClick={toggleEdit} aria-expanded={editing}>
             <IconPencil size={16} strokeWidth={2} />
             {editing ? "Listo" : "Escribir código"}
           </button>
@@ -131,7 +131,7 @@ export function CodeEditor({ dials, onChange, onValidityChange, large = false }:
             </p>
           </div>
         ) : (
-          <div role="group" aria-labelledby={`${inputId}-t`} className={clsx("flex justify-center", large ? "gap-2" : "gap-1")}>
+          <div role="group" data-tour="slots" aria-labelledby={`${inputId}-t`} className={clsx("flex justify-center", large ? "gap-2" : "gap-1")}>
             {dials.map((v, i) => (
               <button
                 key={i}
@@ -206,7 +206,7 @@ function Knob({ dial, value, onSet, large }: { dial: number; value: number; onSe
   }
 
   return (
-    <section aria-label="Dial seleccionado" className="flex flex-col items-center gap-1.5">
+    <section aria-label="Dial seleccionado" data-tour="knob" className="flex flex-col items-center gap-1.5">
       <span className="text-[13px] text-ink-3">
         <span className="font-semibold text-turq">Dial {dial + 1}</span> · arrastra la perilla o usa las flechas
       </span>

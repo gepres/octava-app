@@ -6,6 +6,21 @@ App web instalable (PWA), en español, que acompaña una **práctica simbólica 
 
 Todo funciona en el navegador: sin cuentas, sin servidor de datos y sin analítica.
 
+## Guía de uso dentro de la app
+
+La app trae un recorrido paso a paso hecho con [driver.js](https://driverjs.com). Ilumina cada control y lo explica en una burbuja, con «Siguiente», «Anterior», el progreso y cierre con Escape o con la ×.
+
+- **Cómo abrirla:**
+  - **Tablero:** «Ayuda» > «Ver la guía paso a paso».
+  - **Ajustes:** «Recorrer la guía de uso».
+  - **Sesión:** botón «Guía» de la cabecera, con su propia guía.
+- **Recorrido completo:** Tablero (código, diales, perilla, escribir o pegar el código, intención, duración, testigo, sonido, guardar preset, iniciar y secciones) → Presets → Historial → Ajustes. El último paso de cada sección lleva a la siguiente.
+- **No se abre sola:** el encargo pide evitar pantallas de bienvenida.
+- **Accesibilidad:** la burbuja es un diálogo con nombre y descripción, el foco va a «Siguiente», funcionan las flechas del teclado y, al cerrar, el foco vuelve al botón que la abrió.
+- **Movimiento reducido:** sin animaciones.
+
+Los pasos están en `src/guide/guide.ts`. Cada uno señala un elemento con `data-tour="…"`. El estilo está en `globals.css` (`.octava-tour`).
+
 ## Requisitos
 
 - Node.js 20.9 o superior. Se probó con Node 26 y npm 11.
@@ -100,9 +115,10 @@ Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/s
   - PWA sin red;
   - una sesión que vence mientras se está en el Tablero;
   - un preset aplicado en otra pestaña que no se pierde;
-  - una confirmación antigua que no finaliza una sesión nueva.
+  - una confirmación antigua que no finaliza una sesión nueva;
+  - la guía de uso completa: encadenada entre secciones, ajustada a 360 px, cierre con Escape y guía de la sesión.
 
-Resultado: 38 pruebas unitarias y 11 E2E en verde.
+Resultado: 38 pruebas unitarias y 14 E2E en verde.
 
 ## Limitaciones conocidas
 

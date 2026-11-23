@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/octava-logo.png" alt="Octava" width={144} height={38} />
             </Link>
-            <nav aria-label="Secciones" className="flex flex-col gap-1">
+            <nav aria-label="Secciones" data-tour="nav" className="flex flex-col gap-1">
               {NAV.map(({ href, label, Icon }) => (
                 <Link
                   key={href}
@@ -94,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!inSession ? (
         <nav
           aria-label="Secciones"
+          data-tour="nav"
           className="float fixed inset-x-3 bottom-3 z-30 flex h-[68px] gap-1 rounded-3xl p-1.5 lg:hidden"
           style={{ marginBottom: "env(safe-area-inset-bottom)" }}
         >
