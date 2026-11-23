@@ -18,6 +18,7 @@ const TYPES = {
   ".json": "application/json; charset=utf-8",
   ".webmanifest": "application/manifest+json; charset=utf-8",
   ".png": "image/png",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".woff2": "font/woff2",
@@ -27,8 +28,9 @@ const TYPES = {
 async function resolveFile(pathname) {
   const clean = decodeURIComponent(pathname).replace(/\/+$/, "") || "/";
   const candidates = clean === "/" ? ["/index.html"] : [clean, `${clean}.html`, `${clean}/index.html`];
-  // Next 16 pide `x/__next.x.__PAGE__.txt`; el export lo escribe como `x/__next.x/__PAGE__.txt`.
-  if (/\/__next\.[^/]+\.__PAGE__\.txt$/.test(clean)) candidates.push(clean.replace(/\.__PAGE__\.txt$/, "/__PAGE__.txt"));
+  // Next 16 pide `x/__next.!KGFwcCk.x.__PAGE__.txt`; el export lo escribe como `x/__next.!KGFwcCk/x/__PAGE__.txt`.
+  const seg = /^(.*\/__next\.)([^/]+)\.txt$/.exec(clean);
+  if (seg && seg[2].includes(".")) candidates.push(`${seg[1]}${seg[2].replace(/\./g, "/")}.txt`);
   for (const c of candidates) {
     const full = path.join(root, c);
     if (!full.startsWith(root)) return null;

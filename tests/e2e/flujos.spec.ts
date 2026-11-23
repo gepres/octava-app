@@ -3,7 +3,7 @@ import { countStore, setCode, setDuration, startSession, timerText } from "./hel
 
 test.describe("Matriz de flujos", () => {
   test("diales y código 00350702 quedan sincronizados y conservan los ceros", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     await setCode(page, "00350702");
     const expected = [0, 0, 3, 5, 0, 7, 0, 2];
     for (let i = 0; i < 8; i++) {
@@ -74,7 +74,7 @@ test.describe("Matriz de flujos", () => {
   });
 
   test("iniciar, pausar y recargar recupera la pausa con el mismo tiempo", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     await setCode(page, "12345678");
     await startSession(page);
     await page.waitForTimeout(1200);
@@ -95,7 +95,7 @@ test.describe("Matriz de flujos", () => {
 
   test("volver después del vencimiento deja un único registro, también con otra pestaña", async ({ page, context }) => {
     await page.clock.install();
-    await page.goto("/");
+    await page.goto("/tablero");
     await setDuration(page, 1);
     await startSession(page);
     const other = await context.newPage();
@@ -116,7 +116,7 @@ test.describe("Matriz de flujos", () => {
   });
 
   test("finalizar antes del límite permite guardar la nota y se distingue en el historial", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     await setCode(page, "00350702");
     await startSession(page);
     await page.getByRole("button", { name: "Finalizar" }).click();
@@ -168,7 +168,7 @@ test.describe("Matriz de flujos", () => {
     });
     const playing = () => page.evaluate(() => (window as unknown as { __osc: { playing: number } }).__osc.playing);
 
-    await page.goto("/");
+    await page.goto("/tablero");
     await expect(page.getByRole("switch", { name: "Sonido ambiental" })).toHaveAttribute("aria-checked", "false");
     await page.getByRole("switch", { name: "Sonido ambiental" }).click();
     await startSession(page);
@@ -198,7 +198,7 @@ test.describe("Matriz de flujos", () => {
 
   test("a 360 px y con teclado se completa el flujo principal sin recortes", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 });
-    await page.goto("/");
+    await page.goto("/tablero");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
     // Escribir el código con el teclado sobre los diales.

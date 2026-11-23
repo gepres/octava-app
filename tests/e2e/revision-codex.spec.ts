@@ -4,7 +4,7 @@ import { countStore, setCode, setDuration, startSession } from "./helpers";
 test.describe("Hallazgos de la revisión posterior", () => {
   test("si la sesión vence mientras se está en el Tablero, se cierra y se puede iniciar otra", async ({ page }) => {
     await page.clock.install();
-    await page.goto("/");
+    await page.goto("/tablero");
     await setDuration(page, 1);
     await startSession(page);
     await page.getByRole("link", { name: "Tablero" }).first().click();
@@ -17,7 +17,7 @@ test.describe("Hallazgos de la revisión posterior", () => {
   });
 
   test("un preset aplicado en otra pestaña no se pierde al editar el Tablero", async ({ page, context }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     const other = await context.newPage();
     await other.goto("/presets");
     await other.getByRole("button", { name: "Aplicar Concentración" }).click();
@@ -35,7 +35,7 @@ test.describe("Hallazgos de la revisión posterior", () => {
   });
 
   test("una confirmación antigua no finaliza una sesión iniciada después en otra pestaña", async ({ page, context }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     await setCode(page, "00350702");
     await startSession(page);
     await page.getByRole("button", { name: "Finalizar" }).click();
@@ -46,7 +46,7 @@ test.describe("Hallazgos de la revisión posterior", () => {
     await other.getByRole("button", { name: "Finalizar" }).click();
     await other.getByRole("button", { name: "Finalizar ahora" }).click();
     await other.getByRole("button", { name: "Omitir" }).click();
-    await other.goto("/");
+    await other.goto("/tablero");
     await startSession(other);
 
     await page.bringToFront();

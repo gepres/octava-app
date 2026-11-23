@@ -11,7 +11,7 @@ import { getActive, reconcileExpired } from "@/storage/sessions";
 import { useLive } from "@/hooks/useLive";
 
 const NAV = [
-  { href: "/", label: "Tablero", Icon: IconBoard },
+  { href: "/tablero", label: "Tablero", Icon: IconBoard },
   { href: "/presets", label: "Presets", Icon: IconBookmark },
   { href: "/historial", label: "Historial", Icon: IconHistory },
   { href: "/ajustes", label: "Ajustes", Icon: IconSliders },
@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id);
   }, [endsAt]);
 
-  const isOn = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isOn = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <AnnouncerProvider>
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-dvh">
         {!inSession ? (
           <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col gap-7 border-r border-white/[0.06] bg-white/[0.015] px-3.5 py-5 lg:flex">
-            <Link href="/" className="flex items-center px-2.5 py-1.5" aria-label="Octava, ir al Tablero">
+            <Link href="/tablero" className="flex items-center px-2.5 py-1.5" aria-label="Octava, ir al Tablero">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/brand/octava-logo.png" alt="Octava" width={144} height={38} />
             </Link>

@@ -17,7 +17,7 @@ async function nextUntil(page: Page, finalLabel: RegExp, max = 15) {
 
 test.describe("Guía de uso", () => {
   test("recorre Tablero → Presets → Historial → Ajustes desde «Ayuda»", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     await page.getByRole("button", { name: "Ayuda" }).click();
     await page.getByRole("button", { name: "Ver la guía paso a paso" }).click();
     await expect(title(page)).toHaveText("Así se usa Octava");
@@ -45,7 +45,7 @@ test.describe("Guía de uso", () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/ajustes");
     await page.getByRole("button", { name: "Recorrer la guía de uso" }).click();
-    await page.waitForURL((u) => u.pathname === "/");
+    await page.waitForURL((u) => u.pathname === "/tablero");
     await expect(title(page)).toHaveText("Así se usa Octava");
     for (let i = 0; i < 11; i++) {
       const box = await popover(page).boundingBox();
@@ -61,7 +61,7 @@ test.describe("Guía de uso", () => {
   });
 
   test("la sesión tiene su propia guía", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/tablero");
     await setCode(page, "00350702");
     await startSession(page);
     await page.getByRole("button", { name: "Guía" }).click();

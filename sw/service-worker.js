@@ -15,9 +15,14 @@ function keyFor(url) {
   return u.pathname + (u.search && u.search !== "?" ? u.search : "");
 }
 
-/** Next 16 pide `x/__next.x.__PAGE__.txt`; el export lo escribe como `x/__next.x/__PAGE__.txt`. */
+/**
+ * Next 16 pide los segmentos con puntos (`x/__next.!KGFwcCk.x.__PAGE__.txt`) y el export
+ * los escribe como carpetas (`x/__next.!KGFwcCk/x/__PAGE__.txt`). Los nombres de segmento
+ * no llevan puntos (son simples o base64url), así que cada punto interior es un separador.
+ */
 function segmentAlias(pathname) {
-  return /\/__next\.[^/]+\.__PAGE__\.txt$/.test(pathname) ? pathname.replace(/\.__PAGE__\.txt$/, "/__PAGE__.txt") : pathname;
+  const m = /^(.*\/__next\.)([^/]+)\.txt$/.exec(pathname);
+  return m && m[2].includes(".") ? `${m[1]}${m[2].replace(/\./g, "/")}.txt` : pathname;
 }
 
 /** URL canónica de una página: `/historial.html` y `/historial/` → `/historial`; `/index.html` → `/`. */
@@ -114,7 +119,7 @@ function offlinePage() {
 <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0B0C0E;color:#F2EEE8;font-family:system-ui,sans-serif">
 <main style="max-width:28rem;padding:24px;text-align:center">
 <h1 style="font-weight:600">Esta página no está disponible sin conexión</h1>
-<p style="color:#CFC9BF;line-height:1.5">Octava guarda sus pantallas principales en el dispositivo. Abre el <a style="color:#6BE4D7" href="/">Tablero</a> o vuelve a intentarlo con conexión.</p>
+<p style="color:#CFC9BF;line-height:1.5">Octava guarda sus pantallas principales en el dispositivo. Abre el <a style="color:#6BE4D7" href="/tablero">Tablero</a> o vuelve a intentarlo con conexión.</p>
 </main></body></html>`;
   return new Response(html, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }

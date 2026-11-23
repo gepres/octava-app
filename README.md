@@ -6,6 +6,19 @@ App web instalable (PWA), en español, que acompaña una **práctica simbólica 
 
 Todo funciona en el navegador: sin cuentas, sin servidor de datos y sin analítica.
 
+## Rutas
+
+| Ruta | Qué es |
+|---|---|
+| `/` | **Portada** que presenta la app: para qué sirve, cómo funciona, beneficios, privacidad, instalación y preguntas frecuentes. |
+| `/tablero` | Tablero: código, intención, duración, testigo y sonido. |
+| `/sesion`, `/presets`, `/historial`, `/ajustes` | Resto de la app. |
+
+- **Grupo `(app)`:** las secciones de la app viven en `src/app/(app)/`, con su menú (`AppShell`). La portada (`src/app/page.tsx` y `src/components/landing/`) va aparte y no lleva ese menú.
+- **App instalada:** `start_url` es `/tablero`, así que se abre directamente en el Tablero. Si una instalación anterior abre `/` en modo app, la portada la redirige al Tablero.
+- **Capturas:** las de la portada (`public/landing/*.webp`) son reales, hechas con datos de ejemplo. Si cambia la interfaz, conviene rehacerlas.
+- **Sin promesas terapéuticas:** el pie y las preguntas frecuentes dicen que Octava no sustituye la atención médica ni psicológica.
+
 ## Guía de uso dentro de la app
 
 La app trae un recorrido paso a paso hecho con [driver.js](https://driverjs.com). Ilumina cada control y lo explica en una burbuja, con «Siguiente», «Anterior», el progreso y cierre con Escape o con la ×.
@@ -51,9 +64,10 @@ npm install
 2. En **DevTools > Application**:
    - **Manifest**: `Octava`, modo `standalone` e iconos de 192 y 512 px, además del adaptable.
    - **Service Workers**: `sw.js` activo.
-   - **Cache Storage > `octava-<versión>`**: las 5 páginas, sus payloads `.txt`, los chunks, las fuentes y los iconos.
+   - **Cache Storage > `octava-<versión>`**: las 6 páginas (portada incluida), sus payloads `.txt`, los chunks, las fuentes, los iconos y las capturas de la portada.
 3. En **Ajustes > Tus datos** aparece «Sin conexión: Disponible» cuando el worker ya controla la página.
 4. Marca **Network > Offline**:
+   - abre la portada y entra en la app con «Abrir Octava»;
    - navega entre Tablero, Presets, Historial y Ajustes;
    - recarga la página;
    - inicia y termina una sesión;
@@ -93,6 +107,7 @@ Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/s
 - `sw/service-worker.js` + `scripts/build-sw.mjs`: worker propio.
   - Precachea todo `out/`: HTML, payloads RSC, chunks, CSS, fuentes e iconos. La caché se versiona con el hash de la build.
   - Las navegaciones se sirven desde la caché de esa misma build. Si falta una página sin red, responde con un aviso explícito.
+  - Next 16 pide los segmentos RSC con puntos (`tablero/__next.!KGFwcCk.tablero.__PAGE__.txt`, donde `!KGFwcCk` es el grupo `(app)`), mientras que el export los escribe como carpetas (`tablero/__next.!KGFwcCk/tablero/__PAGE__.txt`). El worker y `scripts/serve.mjs` traducen una forma a la otra.
   - Una versión nueva espera a que se cierren las pestañas de la anterior.
 
 ## Pruebas
@@ -116,9 +131,10 @@ Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/s
   - una sesión que vence mientras se está en el Tablero;
   - un preset aplicado en otra pestaña que no se pierde;
   - una confirmación antigua que no finaliza una sesión nueva;
-  - la guía de uso completa: encadenada entre secciones, ajustada a 360 px, cierre con Escape y guía de la sesión.
+  - la guía de uso completa: encadenada entre secciones, ajustada a 360 px, cierre con Escape y guía de la sesión;
+  - la portada: secciones, preguntas desplegables, paso al Tablero, sin desbordamiento a 360 px, «Empezar con la guía», redirección cuando se abre como app instalada y apertura sin red.
 
-Resultado: 38 pruebas unitarias y 14 E2E en verde.
+Resultado: 38 pruebas unitarias y 18 E2E en verde.
 
 ## Limitaciones conocidas
 

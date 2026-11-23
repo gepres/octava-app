@@ -77,7 +77,7 @@ export function AjustesView() {
             <p className="m-0 rounded-[22px] border border-copper-light/35 bg-gradient-to-b from-copper/[0.12] to-copper/[0.04] px-[18px] py-4 text-[15px] leading-relaxed">
               {HELP_TEXT}
             </p>
-            <button type="button" className="btn-soft self-start" onClick={() => router.push("/?guia=1")}>
+            <button type="button" className="btn-soft self-start" onClick={() => router.push("/tablero?guia=1")}>
               Recorrer la guía de uso
             </button>
           </Section>

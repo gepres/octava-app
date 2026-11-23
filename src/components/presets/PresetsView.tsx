@@ -50,7 +50,7 @@ export function PresetsView() {
     setError(null);
     try {
       await draftFromPreset(p);
-      setToast({ text: `«${p.name}» cargado en el Tablero`, href: "/", linkText: "Ir al Tablero" });
+      setToast({ text: `«${p.name}» cargado en el Tablero`, href: "/tablero", linkText: "Ir al Tablero" });
     } catch {
       setError("No se pudo cargar el preset en el Tablero. Inténtalo de nuevo.");
     }

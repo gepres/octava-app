@@ -59,7 +59,7 @@ export function HistorialView() {
         <div data-tour="history-empty" className="glass mx-auto mt-6 flex max-w-md flex-col items-center gap-4 rounded-[28px] p-8 text-center">
           <h2 className="m-0 text-xl font-semibold">Aún no hay sesiones</h2>
           <p className="m-0 text-ink-2">Cuando termines una sesión aparecerá aquí con su código, su duración y tu nota.</p>
-          <Link href="/" className="btn-go no-underline">Ir al Tablero</Link>
+          <Link href="/tablero" className="btn-go no-underline">Ir al Tablero</Link>
         </div>
       </Wrap>
     );
@@ -231,7 +231,7 @@ function RecordDetail({ record, onDeleted }: { record: SessionRecord; onDeleted:
     setError(null);
     try {
       await draftFromRecord(record);
-      router.push("/");
+      router.push("/tablero");
     } catch {
       setError("No se pudo cargar la configuración en el Tablero. Inténtalo de nuevo.");
     }

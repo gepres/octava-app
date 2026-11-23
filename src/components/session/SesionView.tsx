@@ -169,7 +169,7 @@ export function SesionView() {
         <div className="glass mx-auto mt-10 flex max-w-md flex-col items-center gap-4 rounded-[28px] p-8 text-center">
           <h1 className="m-0 text-2xl font-semibold tracking-[-0.025em]">No hay ninguna sesión en curso</h1>
           <p className="m-0 text-ink-2">Prepara el código y la intención en el Tablero para empezar.</p>
-          <Link href="/" className="btn-go no-underline">Ir al Tablero</Link>
+          <Link href="/tablero" className="btn-go no-underline">Ir al Tablero</Link>
         </div>
       </Frame>
     );
@@ -346,7 +346,7 @@ function Frame({ children, onGuide }: { children: React.ReactNode; onGuide?: (el
   return (
     <div className="mx-auto w-full max-w-[1160px] px-4 pb-10 lg:px-9 lg:pt-6">
       <header className="flex h-[60px] items-center justify-between">
-        <Link href="/" className="btn-link !text-ink-2">
+        <Link href="/tablero" className="btn-link !text-ink-2">
           <IconChevronLeft size={18} />
           Tablero
         </Link>
@@ -464,7 +464,7 @@ function Closing({ record, onPin }: { record: SessionRecord; onPin: (r: SessionR
         ) : (
           <div className="relative flex flex-wrap gap-3">
             <Link href={`/historial?id=${encodeURIComponent(record.id)}`} className="btn-glass no-underline">Ver historial</Link>
-            <Link href="/" className="btn-go no-underline">Volver al tablero</Link>
+            <Link href="/tablero" className="btn-go no-underline">Volver al tablero</Link>
           </div>
         )}
       </div>

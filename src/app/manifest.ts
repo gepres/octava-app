@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Octava",
     description: "Práctica simbólica de intención y registro personal, con ocho diales y un temporizador.",
     lang: "es",
-    start_url: "/",
+    start_url: "/tablero",
     scope: "/",
     display: "standalone",
     orientation: "any",

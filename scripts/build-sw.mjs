@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "out");
 
 /** Archivos que necesita el núcleo de la app sin red. */
-const INCLUDE = /\.(html|txt|js|css|woff2?|png|webmanifest|ico|svg|json)$/i;
+const INCLUDE = /\.(html|txt|js|css|woff2?|png|webp|webmanifest|ico|svg|json)$/i;
 const EXCLUDE = [/^sw\.js$/, /^404/, /^_not-found/, /\.map$/];
 
 async function walk(dir) {

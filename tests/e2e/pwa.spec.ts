@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { countStore, setCode, startSession } from "./helpers";
 
-test("la PWA abre sin red: tablero, presets, sesión e historial", async ({ page, context }) => {
-  await page.goto("/");
+test("la PWA abre sin red: portada, tablero, presets, sesión e historial", async ({ page, context }) => {
+  await page.goto("/tablero");
   // Esperar a que el service worker esté activo y controle la página.
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
@@ -15,6 +15,8 @@ test("la PWA abre sin red: tablero, presets, sesión e historial", async ({ page
   const manifest = await page.evaluate(async () => (await fetch("/manifest.webmanifest")).json());
   expect(manifest.display).toBe("standalone");
   expect(manifest.icons.length).toBeGreaterThanOrEqual(3);
+  // La app instalada abre directamente el Tablero, no la portada.
+  expect(manifest.start_url).toBe("/tablero");
 
   await context.setOffline(true);
 
@@ -26,8 +28,15 @@ test("la PWA abre sin red: tablero, presets, sesión e historial", async ({ page
   await page.goto("/historial?id=inexistente");
   await expect(page.getByRole("heading", { level: 1, name: "Historial" })).toBeVisible();
 
-  // Crear una sesión sin red.
+  // La portada también abre sin red y lleva al Tablero.
   await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ocho diales para sostener tu intención.");
+  await page.getByRole("banner").getByRole("link", { name: "Abrir Octava" }).click();
+  await page.waitForURL("**/tablero");
+  await expect(page.getByRole("button", { name: /^Dial 1, valor/ })).toBeVisible();
+
+  // Crear una sesión sin red.
+  await page.goto("/tablero");
   await setCode(page, "20406080");
   await startSession(page);
   await page.getByRole("button", { name: "Finalizar" }).click();

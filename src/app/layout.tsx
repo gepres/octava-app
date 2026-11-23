@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
-import { AppShell } from "@/components/AppShell";
 import "driver.js/dist/driver.css";
 import "./globals.css";
 
@@ -27,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${geist.variable} h-full`}>
       <body className="app-bg min-h-full">
-        <AppShell>{children}</AppShell>
+        {children}
       </body>
     </html>
   );
