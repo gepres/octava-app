@@ -6,6 +6,20 @@ App web instalable (PWA), en español, que acompaña una **práctica simbólica 
 
 Todo funciona en el navegador: sin cuentas, sin servidor de datos y sin analítica.
 
+## Códigos con significado
+
+El código no hace nada por sí mismo: significa lo que la persona decida. Para que no sea un número suelto, el Tablero ofrece dos ayudas.
+
+- **Significado propio.** Bajo los diales aparece el significado del código actual, por ejemplo «Enfoque», o «Darle significado a este código». Cada código puede llevar un nombre (hasta 40 caracteres) y una descripción opcional (hasta 200).
+  - **Mis códigos**, en la cabecera del código, lista los códigos con significado: se elige uno por lo que significa y se pone en los diales. Desde ahí también se editan o se quitan.
+  - Al iniciar, el nombre se congela en la sesión (`codeName`) y aparece en la Sesión y en el Historial. Los Presets muestran el significado vigente de su código.
+  - Los códigos de los tres presets de ejemplo traen un significado de ejemplo: Enfoque, Pausa y Soltar.
+- **Código desde la intención.** Bajo la intención, Octava propone un código de 8 dígitos (`src/domain/propose.ts`).
+  - Cada letra vale una cifra, como en la numerología pitagórica (a = 1 … i = 9, j = 1 …). Las letras se reparten por turnos en ocho grupos y cada dígito es la última cifra de la suma de su grupo. Si hay menos de ocho letras, se vuelve a empezar por la primera.
+  - No cuenta tildes, mayúsculas, espacios, cifras ni signos. Pide al menos 3 letras. La misma intención da siempre el mismo código.
+  - «¿Cómo se calcula?» lo explica en la app y deja claro que es un método simbólico.
+  - Si se da significado a un código propuesto, la descripción empieza con la intención.
+
 ## Rutas
 
 | Ruta | Qué es |
@@ -27,7 +41,7 @@ La app trae un recorrido paso a paso hecho con [driver.js](https://driverjs.com)
   - **Tablero:** «Ayuda» > «Ver la guía paso a paso».
   - **Ajustes:** «Recorrer la guía de uso».
   - **Sesión:** botón «Guía» de la cabecera, con su propia guía.
-- **Recorrido completo:** Tablero (código, diales, perilla, escribir o pegar el código, intención, duración, testigo, sonido, guardar preset, iniciar y secciones) → Presets → Historial → Ajustes. El último paso de cada sección lleva a la siguiente.
+- **Recorrido completo:** Tablero (código, diales, perilla, escribir o pegar el código, significado, Mis códigos, intención, código desde la intención, duración, testigo, sonido, guardar preset, iniciar y secciones) → Presets → Historial → Ajustes. El último paso de cada sección lleva a la siguiente.
 - **No se abre sola:** el encargo pide evitar pantallas de bienvenida.
 - **Accesibilidad:** la burbuja es un diálogo con nombre y descripción, el foco va a «Siguiente», funcionan las flechas del teclado y, al cerrar, el foco vuelve al botón que la abrió.
 - **Movimiento reducido:** sin animaciones.
@@ -81,7 +95,7 @@ npm install
 
 ## Dónde se guardan los datos
 
-Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/storage/db.ts`):
+Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/storage/db.ts`). Va por la **versión 2**: la migración desde la 1 añade `meanings` sin tocar lo demás.
 
 | Store | Contenido |
 | --- | --- |
@@ -90,12 +104,13 @@ Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/s
 | `history` | Registros de sesiones con la configuración congelada, el estado (completada o finalizada antes) y la nota. |
 | `images` | Imágenes del testigo, ya reducidas a 1.024 px por lado. Cada sesión tiene la suya. |
 | `kv` | Ajustes, borrador del Tablero (con su imagen) y nota pendiente de cierre. |
+| `meanings` | (v2) Lo que cada código significa para la persona: nombre y descripción, con el código como clave. Incluye 3 ejemplos. |
 
 **Nada sale del dispositivo.** Si borras los datos del sitio en el navegador, se pierden. La app pide almacenamiento persistente al iniciar la primera sesión. En iPhone, instalada como app, Safari conserva mejor los datos.
 
 ## Arquitectura
 
-- `src/domain/`: lógica pura del código de 8 dígitos y del temporizador. El tiempo restante se calcula siempre desde el estado persistido: `endsAt` en curso, `remainingMs` en pausa.
+- `src/domain/`: lógica pura del código de 8 dígitos, del código propuesto desde la intención y del temporizador. El tiempo restante se calcula siempre desde el estado persistido: `endsAt` en curso, `remainingMs` en pausa.
 - `src/storage/`: repositorios con transacciones atómicas.
   - **Iniciar.** Comprueba que no haya otra sesión activa y la crea, con su imagen, en una sola transacción.
   - **Cerrar.** `history.add` con el id de la sesión, borrado de `current` y nota pendiente, en la misma transacción. Así, un doble toque, dos pestañas o reabrir la app producen **un solo registro**.
@@ -118,7 +133,11 @@ Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/s
   - inicios y cierres concurrentes con un único registro;
   - fallo de guardado con reintento;
   - nota sobre un registro borrado;
-  - limpieza de imágenes, presets, ajustes y borrador.
+  - limpieza de imágenes, presets, ajustes y borrador;
+  - código propuesto: valores de las letras, tildes y signos, determinismo, reparto por turnos y mínimo de letras;
+  - significados: ejemplos, crear, editar, quitar, orden y validación;
+  - nombre del código congelado en la sesión;
+  - migración del esquema de v1 a v2 conservando los datos.
 - **E2E** (`tests/e2e`): la matriz de flujos del encargo, más casos entre pestañas surgidos de la revisión de Codex:
   - diales ↔ código `00350702`;
   - presets que persisten sin alterar el historial;
@@ -132,9 +151,11 @@ Los datos están en **IndexedDB**, base `octava`, con esquema versionado (`src/s
   - un preset aplicado en otra pestaña que no se pierde;
   - una confirmación antigua que no finaliza una sesión nueva;
   - la guía de uso completa: encadenada entre secciones, ajustada a 360 px, cierre con Escape y guía de la sesión;
-  - la portada: secciones, preguntas desplegables, paso al Tablero, sin desbordamiento a 360 px, «Empezar con la guía», redirección cuando se abre como app instalada y apertura sin red.
+  - la portada: secciones, preguntas desplegables, paso al Tablero, sin desbordamiento a 360 px, «Empezar con la guía», redirección cuando se abre como app instalada y apertura sin red;
+  - significados: darlo, recargar, elegir en «Mis códigos», verlo en la sesión y el historial, editarlo y quitarlo desde la lista con el foco de vuelta en su botón;
+  - código desde la intención: en escritorio y en la hoja de móvil a 360 px, con la intención como primera descripción.
 
-Resultado: 38 pruebas unitarias y 18 E2E en verde.
+Resultado: 50 pruebas unitarias y 22 E2E en verde.
 
 ## Limitaciones conocidas
 

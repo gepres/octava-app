@@ -62,6 +62,7 @@ export async function startSession(draft: Draft, opts: { soundOn: boolean; now?:
     witness: { alias: config.witness.alias.trim(), ...(imageId ? { imageId } : {}) },
     tone: config.tone,
     ...(config.presetId ? { presetId: config.presetId, presetName: config.presetName } : {}),
+    ...(config.codeName?.trim() ? { codeName: config.codeName.trim() } : {}),
   };
   const session: RunningSession = {
     key: "current",

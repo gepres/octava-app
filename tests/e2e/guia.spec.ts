@@ -5,7 +5,7 @@ const popover = (page: Page) => page.locator(".driver-popover.octava-tour");
 const title = (page: Page) => popover(page).locator(".driver-popover-title");
 
 /** Pulsa «Siguiente» hasta que aparezca el botón indicado (o el de «Listo»). */
-async function nextUntil(page: Page, finalLabel: RegExp, max = 15) {
+async function nextUntil(page: Page, finalLabel: RegExp, max = 20) {
   for (let i = 0; i < max; i++) {
     const next = popover(page).locator(".driver-popover-next-btn");
     await expect(next).toBeVisible();
@@ -47,7 +47,7 @@ test.describe("Guía de uso", () => {
     await page.getByRole("button", { name: "Recorrer la guía de uso" }).click();
     await page.waitForURL((u) => u.pathname === "/tablero");
     await expect(title(page)).toHaveText("Así se usa Octava");
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 16; i++) {
       const box = await popover(page).boundingBox();
       expect(box).not.toBeNull();
       expect(box!.x).toBeGreaterThanOrEqual(0);

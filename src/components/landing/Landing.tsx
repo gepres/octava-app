@@ -77,7 +77,7 @@ const FAQ: { q: string; a: ReactNode }[] = [
   },
   {
     q: "¿Qué es el código de ocho dígitos?",
-    a: "Es la combinación de los ocho diales, cada uno del 0 al 9. Puedes componerla con la perilla, con el teclado o pegarla. Los códigos de los ejemplos son ilustrativos.",
+    a: "Es la combinación de los ocho diales, cada uno del 0 al 9, y significa lo que tú decidas: puedes ponerle un nombre, como «Enfoque», y guardarlo en «Mis códigos». Si no sabes cuál usar, Octava te propone uno a partir de las letras de tu intención. Los códigos de los ejemplos son ilustrativos.",
   },
   {
     q: "¿Qué es el testigo?",
@@ -192,7 +192,7 @@ function HeroVisual() {
         </div>
         <Image
           src="/landing/tablero-escritorio.webp"
-          alt="El Tablero de Octava en el ordenador: ocho diales con el código 30521470, la perilla de cobre y la intención, la duración y el sonido de la sesión."
+          alt="El Tablero de Octava en el ordenador: ocho diales con el código 30521470 y su significado, «Enfoque», la perilla de cobre, la intención con el código que Octava propone a partir de ella, la duración y el sonido de la sesión."
           width={2000}
           height={1250}
           loading="eager"
@@ -204,7 +204,7 @@ function HeroVisual() {
       {/* Móvil: el Tablero y la sesión en curso; en pantallas anchas, la sesión sobre el ordenador. */}
       <div className="relative flex items-start justify-center sm:absolute sm:-bottom-14 sm:-left-8 sm:block sm:w-[30%]">
         <figure className="device-phone relative z-10 m-0 w-[56%] sm:hidden">
-          <Image src="/landing/tablero-movil.webp" alt="El Tablero en el móvil, con la perilla y el botón Iniciar sesión." width={780} height={1688} loading="eager" className="block h-auto w-full" />
+          <Image src="/landing/tablero-movil.webp" alt="El Tablero en el móvil: el código 30521470 con su significado, «Enfoque», la perilla y el botón Iniciar sesión." width={780} height={1688} loading="eager" className="block h-auto w-full" />
         </figure>
         <figure className="device-phone drift relative m-0 -ml-[12%] mt-[14%] w-[50%] rotate-[5deg] sm:m-0 sm:w-full sm:rotate-0">
           <Image src="/landing/sesion-movil.webp" alt="Una sesión en curso en el móvil: quedan 13:48 de 20 minutos." width={780} height={1688} loading="eager" className="block h-auto w-full" />
@@ -304,20 +304,26 @@ function HowItWorks() {
   return (
     <Section id="como-funciona" eyebrow="Cómo funciona" title="Tres pasos, sin curva de aprendizaje." lead="Todo cabe en una pantalla: el Tablero. Y si dudas, la guía paso a paso te lo enseña dentro de la app.">
       <ol className="m-0 grid list-none gap-4 p-0 lg:grid-cols-3">
-        <Step n={1} title="Compón tu código" text="Gira los ocho diales con la perilla, las flechas del teclado o pegando un código de ocho cifras.">
-          <div className="flex items-center justify-center gap-1.5">
-            {"30521470".split("").map((d, i) => (
-              <span
-                key={i}
-                className={[
-                  "flex h-[52px] w-[30px] items-center justify-center rounded-[10px] border text-xl",
-                  i === 0 ? "border-turq/60 bg-turq-deep/15 shadow-[0_0_22px_-6px_rgba(60,207,192,0.7)]" : "border-white/[0.09] bg-white/[0.045]",
-                  i === 4 ? "ml-2" : "",
-                ].join(" ")}
-              >
-                {d}
-              </span>
-            ))}
+        <Step n={1} title="Elige tu código" text="Gira los ocho diales, toma uno de «Mis códigos» o deja que Octava te lo proponga desde tu intención. Ponle un nombre para recordar qué significa para ti.">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center justify-center gap-1.5">
+              {"30521470".split("").map((d, i) => (
+                <span
+                  key={i}
+                  className={[
+                    "flex h-[52px] w-[30px] items-center justify-center rounded-[10px] border text-xl",
+                    i === 0 ? "border-turq/60 bg-turq-deep/15 shadow-[0_0_22px_-6px_rgba(60,207,192,0.7)]" : "border-white/[0.09] bg-white/[0.045]",
+                    i === 4 ? "ml-2" : "",
+                  ].join(" ")}
+                >
+                  {d}
+                </span>
+              ))}
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-copper-light/25 bg-copper/[0.12] px-3.5 py-1.5 text-sm font-semibold text-copper-pale">
+              <span className="h-[7px] w-[7px] rotate-45 rounded-[2px] bg-copper-light shadow-[0_0_10px_rgba(217,162,115,0.75)]" />
+              Enfoque
+            </span>
           </div>
         </Step>
         <Step n={2} title="Prepara la sesión" text="Escribe tu intención, elige de 1 a 60 minutos y, si quieres, añade un testigo y un tono suave.">

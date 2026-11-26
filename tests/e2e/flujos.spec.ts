@@ -199,6 +199,8 @@ test.describe("Matriz de flujos", () => {
   test("a 360 px y con teclado se completa el flujo principal sin recortes", async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/tablero");
+    // Se mide con el Tablero ya cargado (diales, halo y significado), no con «Cargando…».
+    await expect(page.locator("[data-tour=meaning]")).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
     // Escribir el código con el teclado sobre los diales.

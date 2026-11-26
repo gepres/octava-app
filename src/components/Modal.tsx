@@ -13,17 +13,26 @@ interface ModalProps {
   description?: string;
   /** Hoja inferior en móvil, diálogo centrado en escritorio. */
   className?: string;
+  /**
+   * A dónde vuelve el foco al cerrar, si no es el control que lo abrió (que puede haber cambiado
+   * o venir de otro diálogo). `null` = no mover el foco: lo toma el diálogo que se abre después.
+   */
+  returnFocus?: () => HTMLElement | null;
 }
 
 /**
  * Diálogo nativo (`<dialog>` con `showModal`): atrapa el foco, cierra con Escape
  * y devuelve el foco al control que lo abrió.
  */
-export function Modal({ open, onClose, title, children, role = "dialog", description, className }: ModalProps) {
+export function Modal({ open, onClose, title, children, role = "dialog", description, className, returnFocus }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
   const opener = useRef<Element | null>(null);
+  const returnRef = useRef(returnFocus);
+  useEffect(() => {
+    returnRef.current = returnFocus;
+  });
 
   useEffect(() => {
     const d = ref.current;
@@ -34,7 +43,7 @@ export function Modal({ open, onClose, title, children, role = "dialog", descrip
       else d.setAttribute("open", "");
     } else if (!open && d.open) {
       d.close();
-      const el = opener.current as HTMLElement | null;
+      const el = returnRef.current ? returnRef.current() : (opener.current as HTMLElement | null);
       if (el && document.contains(el)) el.focus();
     }
   }, [open]);

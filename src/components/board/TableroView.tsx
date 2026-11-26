@@ -11,6 +11,8 @@ import { toneEngine } from "@/audio/engine";
 import { applyDraftPatch, effectiveTone, getDraft, getSettings, mergeDraftPatch, updateDraft, type DraftPatch } from "@/storage/kv";
 import { savePreset, validatePreset } from "@/storage/presets";
 import { ActiveSessionExists, getActive, getPendingNote, startSession } from "@/storage/sessions";
+import { getMeaning, listMeanings } from "@/storage/meanings";
+import { proposeCode } from "@/domain/propose";
 import { useLive } from "@/hooks/useLive";
 import { subscribe } from "@/sync/channel";
 import { useGuide } from "@/guide/useGuide";
@@ -21,9 +23,10 @@ import { Toast, type ToastData } from "@/components/Toast";
 import { HelpSteps } from "@/components/HelpText";
 import { CodeEditor } from "./CodeEditor";
 import { WitnessEditor } from "./WitnessEditor";
-import { IconAlert, IconBookmarkPlus, IconChevronRight, IconClock, IconHelp, IconImage, IconMinus, IconPen, IconPlay, IconPlus, IconVolume } from "@/components/Icons";
+import { MeaningLine, MeaningModal, MyCodesModal, ProposedCode } from "./CodeMeaning";
+import { IconAlert, IconBook, IconBookmarkPlus, IconChevronRight, IconClock, IconHelp, IconImage, IconMinus, IconPen, IconPlay, IconPlus, IconVolume } from "@/components/Icons";
 
-type Sheet = null | "intent" | "witness" | "preset" | "help";
+type Sheet = null | "intent" | "witness" | "preset" | "help" | "codes" | "meaning";
 
 export function TableroView() {
   const router = useRouter();
@@ -32,6 +35,7 @@ export function TableroView() {
   const settings = useLive(["settings"], getSettings);
   const active = useLive(["active"], getActive);
   const pending = useLive(["history", "active"], getPendingNote);
+  const meanings = useLive(["meanings"], listMeanings);
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -41,6 +45,8 @@ export function TableroView() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  /** Código cuyo significado se edita y desde dónde se abrió el diálogo. */
+  const [meaningTarget, setMeaningTarget] = useState<{ code: string; from: "board" | "codes" }>({ code: "", from: "board" });
 
   const draftRef = useRef<Draft | null>(null);
   /** Cambios locales que aún no se confirmaron en IndexedDB. Solo los campos tocados. */
@@ -140,7 +146,10 @@ export function TableroView() {
       // Se inicia desde lo guardado, con el tono resuelto (Ajustes o elección explícita).
       const fresh = await getDraft();
       const tone = effectiveTone(fresh, settings.data);
-      await startSession({ ...fresh, config: { ...fresh.config, tone } }, { soundOn: tone !== null });
+      // El nombre que la persona dio al código queda congelado en la sesión.
+      const meaning = await getMeaning(fresh.config.code).catch(() => undefined);
+      const config = { ...fresh.config, tone, ...(meaning ? { codeName: meaning.name } : {}) };
+      await startSession({ ...fresh, config }, { soundOn: tone !== null });
       // Pedir almacenamiento persistente al guardar la primera sesión (fuera de la transacción).
       void navigator.storage?.persist?.().catch(() => undefined);
       announce("Sesión iniciada.");
@@ -177,6 +186,20 @@ export function TableroView() {
 
   const dials = codeToDials(draft.config.code);
   const tone = effectiveTone(draft, settings.data);
+  const meaningOf = (code: string) => meanings.data?.find((m) => m.code === code);
+  const targetMeaning = meaningOf(meaningTarget.code);
+  const openMeaning = (code: string, from: "board" | "codes") => {
+    setMeaningTarget({ code, from });
+    setSheet("meaning");
+  };
+  const closeMeaning = () => setSheet(meaningTarget.from === "codes" ? "codes" : null);
+  // Si el código salió de la intención, la intención es la primera descripción que se ofrece.
+  const intention = draft.config.intention.trim();
+  const suggestedDescription = intention && proposeCode(intention) === meaningTarget.code ? intention : undefined;
+  const putCode = (code: string, name?: string) => {
+    patch({ code });
+    announce(name ? `Código ${code}, «${name}», en los diales.` : `Código ${code} en los diales.`);
+  };
   const soundText = tone !== null ? `Tono de ${tone} Hz · volumen bajo` : "Apagado";
 
   const banners = (
@@ -223,17 +246,26 @@ export function TableroView() {
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
         <section aria-label="Código y diales" className="relative lg:glass lg:rounded-[28px] lg:p-7">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[52%] h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2"
-            style={{ background: "radial-gradient(circle, rgba(60,207,192,0.18) 0%, rgba(60,207,192,0.05) 38%, rgba(60,207,192,0) 64%)" }}
-          />
+          {/* El halo se recorta a la sección: a 360 px medía más que la pantalla y daba scroll horizontal. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden lg:rounded-[28px]">
+            <div
+              className="absolute left-1/2 top-[52%] h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2"
+              style={{ background: "radial-gradient(circle, rgba(60,207,192,0.18) 0%, rgba(60,207,192,0.05) 38%, rgba(60,207,192,0) 64%)" }}
+            />
+          </div>
           <div className="relative">
             <CodeEditor
               dials={dials}
               large={isDesktop}
               onValidityChange={onValidity}
               onChange={(next) => patch({ code: dialsToCode(next) })}
+              headerAction={
+                <button type="button" data-tour="my-codes" className="btn-link" onClick={() => setSheet("codes")}>
+                  <IconBook size={16} strokeWidth={2} />
+                  Mis códigos
+                </button>
+              }
+              below={meanings.data ? <MeaningLine meaning={meaningOf(draft.config.code)} onEdit={() => openMeaning(draft.config.code, "board")} /> : null}
             />
           </div>
         </section>
@@ -245,7 +277,9 @@ export function TableroView() {
 
           {isDesktop ? (
             <>
-              <IntentionInline value={draft.config.intention} onChange={(v) => patch({ intention: v })} />
+              <IntentionInline value={draft.config.intention} onChange={(v) => patch({ intention: v })}>
+                <ProposedCode intention={draft.config.intention} currentCode={draft.config.code} onUse={(c) => putCode(c)} />
+              </IntentionInline>
               <DurationField value={draft.config.durationMin} onChange={(m) => patch({ durationMin: m })} chips />
               <div className="flex flex-col gap-2" data-tour="witness">
                 <span className="text-sm font-medium">
@@ -308,7 +342,16 @@ export function TableroView() {
       ) : null}
 
       <Modal open={sheet === "intent"} onClose={() => setSheet(null)} title="Intención">
-        <IntentionSheet value={draft.config.intention} onChange={(v) => patch({ intention: v })} onDone={() => setSheet(null)} />
+        <IntentionSheet value={draft.config.intention} onChange={(v) => patch({ intention: v })} onDone={() => setSheet(null)}>
+          <ProposedCode
+            intention={draft.config.intention}
+            currentCode={draft.config.code}
+            onUse={(c) => {
+              putCode(c);
+              setSheet(null);
+            }}
+          />
+        </IntentionSheet>
       </Modal>
       <Modal open={sheet === "witness"} onClose={() => setSheet(null)} title="Testigo">
         <WitnessEditor
@@ -319,6 +362,35 @@ export function TableroView() {
         />
         <button type="button" className="btn-go" onClick={() => setSheet(null)}>Listo</button>
       </Modal>
+      <MyCodesModal
+        open={sheet === "codes"}
+        onClose={() => setSheet(null)}
+        meanings={meanings.data}
+        currentCode={draft.config.code}
+        onUse={(m) => {
+          putCode(m.code, m.name);
+          setSheet(null);
+        }}
+        onEdit={(m) => openMeaning(m.code, "codes")}
+        returnFocus={() => document.querySelector<HTMLElement>('[data-tour="my-codes"]')}
+      />
+      <MeaningModal
+        open={sheet === "meaning"}
+        onClose={closeMeaning}
+        code={meaningTarget.code}
+        meaning={targetMeaning}
+        suggestedDescription={suggestedDescription}
+        // Desde «Mis códigos» el foco lo toma la lista, que se vuelve a abrir.
+        returnFocus={() => (meaningTarget.from === "codes" ? null : document.querySelector<HTMLElement>('[data-tour="meaning"] button'))}
+        onSaved={(m) => {
+          closeMeaning();
+          setToast({ text: `${m.code} significa «${m.name}»` });
+        }}
+        onRemoved={(code) => {
+          closeMeaning();
+          setToast({ text: `${code} ya no tiene significado` });
+        }}
+      />
       <SavePresetModal
         open={sheet === "preset"}
         onClose={() => setSheet(null)}
@@ -474,24 +546,26 @@ function SoundRow({ on, text, onToggle, compact }: { on: boolean; text: string; 
   );
 }
 
-function IntentionInline({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function IntentionInline({ value, onChange, children }: { value: string; onChange: (v: string) => void; children?: React.ReactNode }) {
   const id = useId();
   return (
     <div className="flex flex-col gap-2" data-tour="intention">
       <label htmlFor={id} className="text-sm font-medium">Intención</label>
       <textarea id={id} className="field resize-none" rows={3} maxLength={280} value={value} placeholder="¿Qué quieres sostener en esta sesión?" onChange={(e) => onChange(e.target.value)} />
       <span className="text-[13px] text-ink-3">Se guarda en la ficha de la sesión, no en el preset.</span>
+      {children}
     </div>
   );
 }
 
-function IntentionSheet({ value, onChange, onDone }: { value: string; onChange: (v: string) => void; onDone: () => void }) {
+function IntentionSheet({ value, onChange, onDone, children }: { value: string; onChange: (v: string) => void; onDone: () => void; children?: React.ReactNode }) {
   const id = useId();
   return (
     <>
       <label htmlFor={id} className="sr-only">Intención</label>
       <textarea id={id} className="field resize-none" rows={4} maxLength={280} autoFocus value={value} placeholder="¿Qué quieres sostener en esta sesión?" onChange={(e) => onChange(e.target.value)} />
       <p className="m-0 text-[13px] text-ink-3">Se guarda en la ficha de la sesión, no en el preset.</p>
+      {children}
       <button type="button" className="btn-go" onClick={onDone}>Listo</button>
     </>
   );

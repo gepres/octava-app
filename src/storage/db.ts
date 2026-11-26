@@ -1,9 +1,9 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { ActiveSession, Draft, PendingNote, Preset, SessionRecord, Settings, StoredImage } from "@/domain/types";
+import type { ActiveSession, CodeMeaning, Draft, PendingNote, Preset, SessionRecord, Settings, StoredImage } from "@/domain/types";
 
 export const DB_NAME = "octava";
 /** Versión del esquema. Cada cambio de estructura sube este número y añade su migración. */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export interface OctavaDB extends DBSchema {
   presets: { key: string; value: Preset };
@@ -11,6 +11,8 @@ export interface OctavaDB extends DBSchema {
   history: { key: string; value: SessionRecord; indexes: { byEndedAt: number } };
   images: { key: string; value: StoredImage };
   kv: { key: string; value: Settings | Draft | PendingNote };
+  /** v2: lo que cada código significa para la persona, con el código como clave. */
+  meanings: { key: string; value: CodeMeaning };
 }
 
 export type OctavaDatabase = IDBPDatabase<OctavaDB>;
@@ -27,6 +29,13 @@ export const EXAMPLE_PRESETS: ReadonlyArray<Pick<Preset, "id" | "name" | "code" 
   { id: "ejemplo-concentracion", name: "Concentración", code: "30521470", durationMin: 20, tone: 440 },
   { id: "ejemplo-pausa-consciente", name: "Pausa consciente", code: "20406080", durationMin: 5, tone: null },
   { id: "ejemplo-cierre-del-dia", name: "Cierre del día", code: "90817263", durationMin: 10, tone: 220 },
+];
+
+/** Significados de ejemplo para los códigos de los presets de ejemplo. La persona puede cambiarlos. */
+export const EXAMPLE_MEANINGS: ReadonlyArray<Pick<CodeMeaning, "code" | "name" | "description">> = [
+  { code: "30521470", name: "Enfoque", description: "Para estudiar o trabajar sin distracciones." },
+  { code: "20406080", name: "Pausa", description: "Parar un momento entre tareas y respirar." },
+  { code: "90817263", name: "Soltar", description: "Cerrar la jornada y dejar ir lo pendiente." },
 ];
 
 let dbPromise: Promise<OctavaDatabase> | null = null;
@@ -46,6 +55,14 @@ export function openOctavaDB(): Promise<OctavaDatabase> {
           const presets = tx.objectStore("presets");
           EXAMPLE_PRESETS.forEach((p, i) => {
             void presets.add({ ...p, example: true, createdAt: now - i, updatedAt: now - i });
+          });
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore("meanings", { keyPath: "code" });
+          const now = Date.now();
+          const meanings = tx.objectStore("meanings");
+          EXAMPLE_MEANINGS.forEach((m) => {
+            void meanings.add({ ...m, createdAt: now, updatedAt: now });
           });
         }
       },

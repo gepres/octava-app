@@ -6,6 +6,7 @@ import { codeFigurePoints, parseCodeInput } from "@/domain/code";
 import { TONES, type Preset, type Tone } from "@/domain/types";
 import { deletePreset, listPresets, savePreset, validatePreset, type PresetValidation } from "@/storage/presets";
 import { draftFromPreset } from "@/storage/kv";
+import { listMeanings } from "@/storage/meanings";
 import { useLive } from "@/hooks/useLive";
 import { useIsDesktop } from "@/hooks/misc";
 import { useAnnounce } from "@/components/Announcer";
@@ -28,6 +29,7 @@ export function PresetsView() {
   const isDesktop = useIsDesktop();
   const announce = useAnnounce();
   const presets = useLive(["presets"], listPresets);
+  const meanings = useLive(["meanings"], listMeanings);
   const [chosen, setChosen] = useState<Editing | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirm, setConfirm] = useState<Preset | null>(null);
@@ -35,6 +37,7 @@ export function PresetsView() {
   const [error, setError] = useState<string | null>(null);
 
   const list = presets.data ?? [];
+  const meaningName = (code: string) => meanings.data?.find((m) => m.code === code)?.name;
   useGuide("presets", !!presets.data);
   // En escritorio el panel siempre está visible: por defecto edita el primero propio o crea uno.
   const ownFirst = list.find((p) => !p.example);
@@ -127,7 +130,10 @@ export function PresetsView() {
                   <Figure code={p.code} id={p.id} />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <h2 className="m-0 break-words text-[17px] font-semibold tracking-[-0.015em]">{p.name}</h2>
-                    <span className="text-base font-medium tracking-[0.16em]">{p.code}</span>
+                    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                      <span className="text-base font-medium tracking-[0.16em]">{p.code}</span>
+                      {meaningName(p.code) ? <span className="truncate text-[13px] font-medium text-copper-light">{meaningName(p.code)}</span> : null}
+                    </span>
                     <span className="text-[13px] text-ink-3">
                       {p.durationMin} min · {p.tone ? `${p.tone} Hz` : "Sin sonido"}
                     </span>

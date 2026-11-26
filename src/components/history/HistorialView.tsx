@@ -110,7 +110,7 @@ export function HistorialView() {
                     type="button"
                     onClick={() => select(r.id)}
                     aria-current={on ? "true" : undefined}
-                    aria-label={`${whenShort(r.endedAt)}, ${statusText(r).toLowerCase()}, ${r.config.intention || "sin intención escrita"}, código ${r.config.code}`}
+                    aria-label={`${whenShort(r.endedAt)}, ${statusText(r).toLowerCase()}, ${r.config.intention || "sin intención escrita"}, código ${r.config.code}${r.config.codeName ? `, ${r.config.codeName}` : ""}`}
                     className={clsx(
                       "flex w-full items-center gap-3.5 rounded-[18px] border px-4 py-3 text-left text-ink transition-colors",
                       on ? "border-turq/35 bg-gradient-to-r from-turq-deep/[0.14] to-turq-deep/[0.04]" : "glass border-white/[0.08] lg:border-transparent lg:bg-none lg:shadow-none lg:hover:bg-white/[0.035]",
@@ -124,7 +124,10 @@ export function HistorialView() {
                         <span>{formatClock(r.elapsedMs)}</span>
                       </span>
                     </span>
-                    <span className="text-[15px] font-medium tracking-[0.14em]">{r.config.code}</span>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="text-[15px] font-medium tracking-[0.14em]">{r.config.code}</span>
+                      {r.config.codeName ? <span className="max-w-[128px] truncate text-[12.5px] font-medium text-copper-light">{r.config.codeName}</span> : null}
+                    </span>
                     {!isDesktop ? <IconChevronRight size={18} className="text-ink-3" /> : null}
                   </button>
                 </li>
@@ -267,6 +270,7 @@ function RecordDetail({ record, onDeleted }: { record: SessionRecord; onDeleted:
             <StatusDot record={record} />
           </span>
           <h2 ref={headingRef} tabIndex={-1} className="m-0 text-[32px] font-light leading-none tracking-[0.14em] outline-none">{record.config.code}</h2>
+          {record.config.codeName ? <span className="text-[15px] font-semibold text-copper-pale">{record.config.codeName}</span> : null}
           <span className="text-sm text-ink-3 first-letter:uppercase">{longFmt.format(new Date(record.endedAt))}</span>
         </div>
       </div>

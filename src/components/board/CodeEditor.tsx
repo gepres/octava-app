@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import clsx from "clsx";
 import { CODE_LENGTH, clampDial, codeToDials, dialsToCode, parseCodeInput } from "@/domain/code";
 import { IconMinus, IconPencil, IconPlus } from "@/components/Icons";
@@ -10,13 +10,17 @@ interface Props {
   onChange: (dials: number[]) => void;
   onValidityChange: (valid: boolean) => void;
   large?: boolean;
+  /** Acción extra en la cabecera, junto a «Escribir código». */
+  headerAction?: ReactNode;
+  /** Contenido bajo los diales (el significado del código). */
+  below?: ReactNode;
 }
 
 /**
  * Edición del código: ocho diales con tabindex móvil, una perilla grande para el dial
  * seleccionado (con un control deslizante nativo encima) y un campo de texto para escribir o pegar.
  */
-export function CodeEditor({ dials, onChange, onValidityChange, large = false }: Props) {
+export function CodeEditor({ dials, onChange, onValidityChange, large = false, headerAction, below }: Props) {
   const [sel, setSel] = useState(0);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(dialsToCode(dials));
@@ -26,6 +30,21 @@ export function CodeEditor({ dials, onChange, onValidityChange, large = false }:
   const toggleRef = useRef<HTMLButtonElement>(null);
   const helpId = useId();
   const inputId = useId();
+
+  // El código puede cambiar desde fuera («Mis códigos», la propuesta o un preset aplicado en otra
+  // pestaña): el campo de texto abierto pasa a mostrar el código nuevo.
+  const code = dialsToCode(dials);
+  const [seenCode, setSeenCode] = useState(code);
+  if (code !== seenCode) {
+    setSeenCode(code);
+    if (editing) {
+      const parsed = parseCodeInput(text);
+      if (!parsed.ok || parsed.code !== code) {
+        setText(code);
+        setError(null);
+      }
+    }
+  }
 
   useEffect(() => {
     onValidityChange(error === null);
@@ -95,10 +114,13 @@ export function CodeEditor({ dials, onChange, onValidityChange, large = false }:
           <h2 id={`${inputId}-t`} className="m-0 text-[13px] font-medium text-ink-3">
             Código
           </h2>
-          <button ref={toggleRef} type="button" data-tour="write-code" className="btn-link" onClick={toggleEdit} aria-expanded={editing}>
-            <IconPencil size={16} strokeWidth={2} />
-            {editing ? "Listo" : "Escribir código"}
-          </button>
+          <div className="flex items-center">
+            {headerAction}
+            <button ref={toggleRef} type="button" data-tour="write-code" className="btn-link" onClick={toggleEdit} aria-expanded={editing}>
+              <IconPencil size={16} strokeWidth={2} />
+              {editing ? "Listo" : "Escribir código"}
+            </button>
+          </div>
         </div>
 
         {editing ? (
@@ -152,6 +174,7 @@ export function CodeEditor({ dials, onChange, onValidityChange, large = false }:
             ))}
           </div>
         )}
+        {below && !error ? below : null}
       </div>
 
       <Knob

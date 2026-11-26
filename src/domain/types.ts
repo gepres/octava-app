@@ -23,6 +23,17 @@ export interface SessionConfig {
   tone: Tone | null;
   presetId?: string;
   presetName?: string;
+  /** Nombre que la persona dio al código, congelado al iniciar. Solo en sesiones e historial. */
+  codeName?: string;
+}
+
+/** Lo que un código significa para la persona: lo decide ella. Clave = el código. */
+export interface CodeMeaning {
+  code: string;
+  name: string;
+  description: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /** Configuración reutilizable. No incluye intención ni testigo. */

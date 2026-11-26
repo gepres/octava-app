@@ -2,7 +2,7 @@
  * Avisos entre pestañas. El mensaje solo invalida: quien lo recibe vuelve a leer IndexedDB,
  * que es la única fuente de verdad.
  */
-export type SyncTopic = "active" | "history" | "presets" | "settings" | "draft";
+export type SyncTopic = "active" | "history" | "presets" | "settings" | "draft" | "meanings";
 
 const CHANNEL = "octava";
 type Listener = (topic: SyncTopic) => void;

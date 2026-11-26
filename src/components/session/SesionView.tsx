@@ -231,7 +231,10 @@ export function SesionView() {
         <section aria-label="Resumen y controles" className="flex flex-col gap-5">
           <dl data-tour="session-summary" className="glass order-3 m-0 grid lg:order-none grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3 rounded-[22px] px-5 py-4">
             <dt className="text-[13px] text-ink-3">Código</dt>
-            <dd className="m-0 text-lg font-medium tracking-[0.16em]">{s.config.code}</dd>
+            <dd className="m-0 flex flex-col gap-0.5">
+              <span className="text-lg font-medium tracking-[0.16em]">{s.config.code}</span>
+              {s.config.codeName ? <span className="text-sm font-medium text-copper-pale">{s.config.codeName}</span> : null}
+            </dd>
             <dt className="text-[13px] text-ink-3">Duración</dt>
             <dd className="m-0 text-[15px]">{s.config.durationMin} min</dd>
             <dt className="text-[13px] text-ink-3">Intención</dt>
@@ -431,6 +434,7 @@ function Closing({ record, onPin }: { record: SessionRecord; onPin: (r: SessionR
           </h2>
           <span className="text-[15px] text-ink-2">
             {formatClock(record.elapsedMs)} de {formatClock(record.durationMs)} · <span className="tracking-[0.14em]">{record.config.code}</span>
+            {record.config.codeName ? <span className="text-copper-pale"> · {record.config.codeName}</span> : null}
           </span>
         </div>
 
